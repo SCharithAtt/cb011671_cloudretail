@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: order-config
+  namespace: default
+type: Opaque
+stringData:
+  AWS_REGION: "us-east-1"
+  COGNITO_REGION: "us-east-1"
+  COGNITO_USER_POOL_ID: "us-east-1_eJvqfLh2p"
+  RDS_DSN: "host=cloudretail-rds.xxxx.us-east-1.rds.amazonaws.com user=postgres password=YOUR_PASSWORD dbname=cloudretail port=5432 sslmode=require"
+  EVENTBRIDGE_BUS_ARN: "arn:aws:events:us-east-1:111546515511:event-bus/cloud-retail-bus"
+  PRODUCT_GRAPHQL_URL: "http://product-service:8082/graphql"
+  PORT: "8083"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: order-service
+        image: 111546515511.dkr.ecr.us-east-1.amazonaws.com/order-service:latest
+        ports:
+        - containerPort: 8083
+        envFrom:
+        - secretRef:
+            name: order-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: order-service
+  ports:
+  - protocol: TCP
+    port: 8083
+    targetPort: 8083

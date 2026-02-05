@@ -1,0 +1,80 @@
+# GraphQL schema for ProductService
+# This schema defines product and review operations for the CloudRetail platform
+
+# Product filter input for getAllProducts query
+input ProductFilter {
+  sellerId: String
+}
+
+# Input for adding a new product
+input AddProductInput {
+  name: String!
+  price: Float!
+  description: String
+  stock: Int!
+  sellerId: String!
+}
+
+# Input for editing an existing product
+input EditProductInput {
+  productId: ID!
+  name: String
+  price: Float
+  description: String
+  stock: Int
+}
+
+# Input for adding a product review
+input AddReviewInput {
+  productId: ID!
+  text: String!
+  rating: Int!
+  userId: String!
+}
+
+#Product review type
+type Review {
+  reviewId: ID!
+  productId: ID!
+  text: String
+  rating: Int
+  userId: String
+  createdAt: String
+}
+
+# Product type representing a product entity
+type Product {
+  productId: ID!
+  name: String!
+  price: Float!
+  description: String
+  stock: Int!
+  sellerId: String!
+  reviews: [Review!]!
+  createdAt: String
+  updatedAt: String
+}
+
+# Query operations  
+type Query {
+  # Get a single product by ID
+  getProductById(id: ID!): Product
+  
+  # Get all products with optional filtering
+  getAllProducts(filter: ProductFilter): [Product!]!
+  
+  # Health check
+  health: String!
+}
+
+# Mutation operations (require seller authentication)
+type Mutation {
+  # Add a new product (requires seller JWT)
+  addProduct(input: AddProductInput!): Product!
+  
+  # Edit an existing product (requires seller JWT and ownership)
+  editProduct(input: EditProductInput!): Product!
+  
+  # Add a review to a product (requires user authentication)
+  addReview(input: AddReviewInput!): Review!
+}

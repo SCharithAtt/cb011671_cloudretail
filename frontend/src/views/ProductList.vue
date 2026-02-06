@@ -13,11 +13,17 @@
         @click="goToProduct(product.productId)"
       >
         <div class="h-2 bg-gradient-to-r from-brand-400 to-brand-500"></div>
+        <img 
+          :src="product.imageUrl || 'https://via.placeholder.com/400x300/6366f1/ffffff?text=No+Image'" 
+          :alt="product.name"
+          class="w-full h-48 object-cover"
+          loading="lazy"
+        />
         <div class="p-5">
           <h3 class="text-lg font-semibold text-gray-900 mb-2 group-hover:text-brand-600 transition-colors">{{ product.name }}</h3>
           <p class="text-gray-500 text-sm mb-4 line-clamp-2">{{ product.description }}</p>
           <div class="flex justify-between items-center mb-4">
-            <span class="text-2xl font-bold text-brand-600">${{ product.price.toFixed(2) }}</span>
+            <span class="text-2xl font-bold text-brand-600">LKR {{ product.price.toFixed(2) }}</span>
             <span
               :class="[
                 'badge',
@@ -59,6 +65,7 @@ interface Product {
   price: number
   stock: number
   sellerId: string
+  imageUrl?: string
 }
 
 const products = ref<Product[]>([])
@@ -74,6 +81,7 @@ const GET_ALL_PRODUCTS = gql`
       price
       stock
       sellerId
+      imageUrl
     }
   }
 `

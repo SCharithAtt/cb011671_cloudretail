@@ -15,7 +15,7 @@
         <div v-for="item in cartStore.items" :key="item.productId" class="card p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 class="font-semibold text-gray-900">{{ item.name }}</h3>
-            <p class="text-brand-600 font-medium">${{ item.price?.toFixed(2) }}</p>
+            <p class="text-brand-600 font-medium">LKR {{ item.price?.toFixed(2) }}</p>
           </div>
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
@@ -23,7 +23,7 @@
               <span class="w-8 text-center font-medium">{{ item.quantity }}</span>
               <button @click="increaseQuantity(item.productId)" class="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-brand-500 hover:text-white hover:border-brand-500 transition-all">+</button>
             </div>
-            <p class="font-semibold text-gray-900 w-20 text-right">${{ ((item.price || 0) * item.quantity).toFixed(2) }}</p>
+            <p class="font-semibold text-gray-900 w-20 text-right">LKR {{ ((item.price || 0) * item.quantity).toFixed(2) }}</p>
             <button @click="removeItem(item.productId)" class="btn-danger text-sm px-3 py-1.5">Remove</button>
           </div>
         </div>
@@ -33,11 +33,11 @@
         <h2 class="text-xl font-bold text-gray-900 mb-4">Order Summary</h2>
         <div class="flex justify-between py-3 border-b border-gray-100 text-gray-600">
           <span>Items ({{ cartStore.itemCount }})</span>
-          <span>${{ cartStore.total.toFixed(2) }}</span>
+          <span>LKR {{ cartStore.total.toFixed(2) }}</span>
         </div>
         <div class="flex justify-between py-3 text-lg font-bold text-gray-900">
           <span>Total</span>
-          <span class="text-brand-600">${{ cartStore.total.toFixed(2) }}</span>
+          <span class="text-brand-600">LKR {{ cartStore.total.toFixed(2) }}</span>
         </div>
         <router-link to="/checkout" class="btn-brand w-full mt-4 text-center block">
           Proceed to Checkout

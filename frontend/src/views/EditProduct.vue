@@ -56,7 +56,7 @@ const form = ref({ name: '', description: '', price: 0, stock: 0 })
 
 const GET_PRODUCT = gql`
   query GetProductById($id: ID!) {
-    getProductById(id: $id) { productId name description price stock }
+    getProductById(id: $id) { productId name description price stock imageUrl }
   }
 `
 

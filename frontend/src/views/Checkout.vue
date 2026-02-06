@@ -10,12 +10,12 @@
             <p class="font-medium text-gray-900">{{ item.name }}</p>
             <p class="text-sm text-gray-500">Qty: {{ item.quantity }}</p>
           </div>
-          <p class="font-semibold text-gray-900">${{ ((item.price || 0) * item.quantity).toFixed(2) }}</p>
+          <p class="font-semibold text-gray-900">LKR {{ ((item.price || 0) * item.quantity).toFixed(2) }}</p>
         </div>
       </div>
       <div class="flex justify-between pt-4 mt-4 border-t border-gray-200 text-lg font-bold">
         <span>Total</span>
-        <span class="text-brand-600">${{ cartStore.total.toFixed(2) }}</span>
+        <span class="text-brand-600">LKR {{ cartStore.total.toFixed(2) }}</span>
       </div>
     </div>
 

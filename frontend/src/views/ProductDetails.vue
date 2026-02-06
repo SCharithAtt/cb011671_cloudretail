@@ -5,10 +5,19 @@
 
     <div v-else-if="product" class="space-y-8">
       <div class="card p-8">
-        <h1 class="text-3xl font-bold text-gray-900 mb-3">{{ product.name }}</h1>
-        <p class="text-gray-500 leading-relaxed mb-6">{{ product.description }}</p>
-        <div class="flex items-center justify-between py-4 border-y border-gray-100 mb-6">
-          <span class="text-3xl font-bold text-brand-600">${{ product.price.toFixed(2) }}</span>
+        <div class="grid md:grid-cols-2 gap-8 mb-6">
+          <div>
+            <img 
+              :src="product.imageUrl || 'https://via.placeholder.com/400x300/6366f1/ffffff?text=No+Image'" 
+              :alt="product.name"
+              class="w-full h-auto rounded-lg shadow-md object-cover"
+            />
+          </div>
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-3">{{ product.name }}</h1>
+            <p class="text-gray-500 leading-relaxed mb-6">{{ product.description }}</p>
+            <div class="flex items-center justify-between py-4 border-y border-gray-100 mb-6">
+          <span class="text-3xl font-bold text-brand-600">LKR {{ product.price.toFixed(2) }}</span>
           <span :class="['badge text-sm px-3 py-1', product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700']">
             {{ product.stock > 0 ? `${product.stock} in stock` : 'Out of stock' }}
           </span>
@@ -76,13 +85,13 @@ const loading = ref(true)
 const error = ref('')
 
 interface Review { rating: number; text: string; userId: string; createdAt: string }
-interface Product { productId: string; name: string; description: string; price: number; stock: number; sellerId: string; reviews?: Review[] }
+interface Product { productId: string; name: string; description: string; price: number; stock: number; sellerId: string; imageUrl?: string; reviews?: Review[] }
 
 const product = ref<Product | null>(null)
 
 const GET_PRODUCT = gql`
   query GetProductById($id: ID!) {
-    getProductById(id: $id) { productId name description price stock sellerId reviews { reviewId text rating userId createdAt } }
+    getProductById(id: $id) { productId name description price stock sellerId imageUrl reviews { reviewId text rating userId createdAt } }
   }
 `
 

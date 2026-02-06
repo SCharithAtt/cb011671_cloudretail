@@ -87,6 +87,20 @@ resource "aws_iam_policy" "ecs_task" {
           "logs:PutLogEvents",
         ]
         Resource = ["*"]
+      },
+      {
+        Sid    = "S3ProductImages"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+        ]
+        Resource = [
+          "arn:aws:s3:::${local.name}-product-images-${var.aws_region}",
+          "arn:aws:s3:::${local.name}-product-images-${var.aws_region}/*"
+        ]
       }
     ]
   })

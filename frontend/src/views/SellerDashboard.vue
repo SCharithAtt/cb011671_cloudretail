@@ -15,7 +15,7 @@
       </div>
       <div class="card p-6 text-center border-t-4 border-green-400">
         <p class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">Revenue</p>
-        <p class="text-4xl font-extrabold text-gray-900 mb-3">${{ stats.totalRevenue.toFixed(2) }}</p>
+        <p class="text-4xl font-extrabold text-gray-900 mb-3">LKR {{ stats.totalRevenue.toFixed(2) }}</p>
         <span class="text-gray-400 text-sm">Total earnings</span>
       </div>
     </div>

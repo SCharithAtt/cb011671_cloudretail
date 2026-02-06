@@ -8,6 +8,7 @@ type AddProductInput struct {
 	Description *string `json:"description,omitempty"`
 	Stock       int     `json:"stock"`
 	SellerID    string  `json:"sellerId"`
+	ImageURL    *string `json:"imageUrl,omitempty"`
 }
 
 type AddReviewInput struct {
@@ -23,6 +24,7 @@ type EditProductInput struct {
 	Price       *float64 `json:"price,omitempty"`
 	Description *string  `json:"description,omitempty"`
 	Stock       *int     `json:"stock,omitempty"`
+	ImageURL    *string  `json:"imageUrl,omitempty"`
 }
 
 type Mutation struct {
@@ -35,6 +37,7 @@ type Product struct {
 	Description *string   `json:"description,omitempty"`
 	Stock       int       `json:"stock"`
 	SellerID    string    `json:"sellerId"`
+	ImageURL    *string   `json:"imageUrl,omitempty"`
 	Reviews     []*Review `json:"reviews"`
 	CreatedAt   *string   `json:"createdAt,omitempty"`
 	UpdatedAt   *string   `json:"updatedAt,omitempty"`

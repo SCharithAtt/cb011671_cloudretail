@@ -55,6 +55,7 @@ type ComplexityRoot struct {
 	Product struct {
 		CreatedAt   func(childComplexity int) int
 		Description func(childComplexity int) int
+		ImageURL    func(childComplexity int) int
 		Name        func(childComplexity int) int
 		Price       func(childComplexity int) int
 		ProductID   func(childComplexity int) int
@@ -156,6 +157,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Product.Description(childComplexity), true
+	case "Product.imageUrl":
+		if e.complexity.Product.ImageURL == nil {
+			break
+		}
+
+		return e.complexity.Product.ImageURL(childComplexity), true
 	case "Product.name":
 		if e.complexity.Product.Name == nil {
 			break
@@ -389,6 +396,7 @@ input AddProductInput {
   description: String
   stock: Int!
   sellerId: String!
+  imageUrl: String
 }
 
 # Input for editing an existing product
@@ -398,6 +406,7 @@ input EditProductInput {
   price: Float
   description: String
   stock: Int
+  imageUrl: String
 }
 
 # Input for adding a product review
@@ -426,6 +435,7 @@ type Product {
   description: String
   stock: Int!
   sellerId: String!
+  imageUrl: String
   reviews: [Review!]!
   createdAt: String
   updatedAt: String
@@ -617,6 +627,8 @@ func (ec *executionContext) fieldContext_Mutation_addProduct(ctx context.Context
 				return ec.fieldContext_Product_stock(ctx, field)
 			case "sellerId":
 				return ec.fieldContext_Product_sellerId(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Product_imageUrl(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			case "createdAt":
@@ -678,6 +690,8 @@ func (ec *executionContext) fieldContext_Mutation_editProduct(ctx context.Contex
 				return ec.fieldContext_Product_stock(ctx, field)
 			case "sellerId":
 				return ec.fieldContext_Product_sellerId(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Product_imageUrl(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			case "createdAt":
@@ -931,6 +945,35 @@ func (ec *executionContext) fieldContext_Product_sellerId(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Product_imageUrl(ctx context.Context, field graphql.CollectedField, obj *model.Product) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Product_imageUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.ImageURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Product_imageUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Product",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Product_reviews(ctx context.Context, field graphql.CollectedField, obj *model.Product) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1069,6 +1112,8 @@ func (ec *executionContext) fieldContext_Query_getProductById(ctx context.Contex
 				return ec.fieldContext_Product_stock(ctx, field)
 			case "sellerId":
 				return ec.fieldContext_Product_sellerId(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Product_imageUrl(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			case "createdAt":
@@ -1130,6 +1175,8 @@ func (ec *executionContext) fieldContext_Query_getAllProducts(ctx context.Contex
 				return ec.fieldContext_Product_stock(ctx, field)
 			case "sellerId":
 				return ec.fieldContext_Product_sellerId(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Product_imageUrl(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			case "createdAt":
@@ -2918,7 +2965,7 @@ func (ec *executionContext) unmarshalInputAddProductInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "price", "description", "stock", "sellerId"}
+	fieldsInOrder := [...]string{"name", "price", "description", "stock", "sellerId", "imageUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -2960,6 +3007,13 @@ func (ec *executionContext) unmarshalInputAddProductInput(ctx context.Context, o
 				return it, err
 			}
 			it.SellerID = data
+		case "imageUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImageURL = data
 		}
 	}
 
@@ -3021,7 +3075,7 @@ func (ec *executionContext) unmarshalInputEditProductInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"productId", "name", "price", "description", "stock"}
+	fieldsInOrder := [...]string{"productId", "name", "price", "description", "stock", "imageUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -3063,6 +3117,13 @@ func (ec *executionContext) unmarshalInputEditProductInput(ctx context.Context, 
 				return it, err
 			}
 			it.Stock = data
+		case "imageUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImageURL = data
 		}
 	}
 
@@ -3205,6 +3266,8 @@ func (ec *executionContext) _Product(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "imageUrl":
+			out.Values[i] = ec._Product_imageUrl(ctx, field, obj)
 		case "reviews":
 			out.Values[i] = ec._Product_reviews(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

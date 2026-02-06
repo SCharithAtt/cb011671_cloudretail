@@ -452,7 +452,7 @@ func (r *queryResolver) GetProductByID(ctx context.Context, id string) (*model.P
 		Description: &product.Description,
 		Stock:       product.Stock,
 		SellerID:    product.SellerID,
-		ImageUrl:    &product.ImageURL,
+		ImageURL:    &product.ImageURL,
 		Reviews:     reviews,
 		CreatedAt:   &product.CreatedAt,
 		UpdatedAt:   &product.UpdatedAt,
@@ -505,7 +505,7 @@ func (r *queryResolver) GetAllProducts(ctx context.Context, filter *model.Produc
 			Description: &product.Description,
 			Stock:       product.Stock,
 			SellerID:    product.SellerID,
-			ImageUrl:    &product.ImageURL,
+			ImageURL:    &product.ImageURL,
 			Reviews:     reviews,
 			CreatedAt:   &product.CreatedAt,
 			UpdatedAt:   &product.UpdatedAt,
@@ -548,8 +548,8 @@ func (r *mutationResolver) AddProduct(ctx context.Context, input model.AddProduc
 	}
 
 	imageUrl := ""
-	if input.ImageUrl != nil {
-		imageUrl = *input.ImageUrl
+	if input.ImageURL != nil {
+		imageUrl = *input.ImageURL
 	}
 
 	product := DynamoProduct{
@@ -585,7 +585,7 @@ func (r *mutationResolver) AddProduct(ctx context.Context, input model.AddProduc
 		Description: &product.Description,
 		Stock:       product.Stock,
 		SellerID:    product.SellerID,
-		ImageUrl:    &product.ImageURL,
+		ImageURL:    &product.ImageURL,
 		Reviews:     []*model.Review{},
 		CreatedAt:   &product.CreatedAt,
 		UpdatedAt:   &product.UpdatedAt,
@@ -663,9 +663,9 @@ func (r *mutationResolver) EditProduct(ctx context.Context, input model.EditProd
 		}
 	}
 
-	if input.ImageUrl != nil {
+	if input.ImageURL != nil {
 		updateExpr += ", imageUrl = :imageUrl"
-		exprAttrValues[":imageUrl"] = &types.AttributeValueMemberS{Value: *input.ImageUrl}
+		exprAttrValues[":imageUrl"] = &types.AttributeValueMemberS{Value: *input.ImageURL}
 	}
 
 	exprAttrNames := map[string]string{
@@ -715,7 +715,7 @@ func (r *mutationResolver) EditProduct(ctx context.Context, input model.EditProd
 		Description: &updatedProduct.Description,
 		Stock:       updatedProduct.Stock,
 		SellerID:    updatedProduct.SellerID,
-		ImageUrl:    &updatedProduct.ImageURL,
+		ImageURL:    &updatedProduct.ImageURL,
 		Reviews:     reviews,
 		CreatedAt:   &updatedProduct.CreatedAt,
 		UpdatedAt:   &updatedProduct.UpdatedAt,

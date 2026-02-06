@@ -34,7 +34,7 @@
         </div>
         <div class="flex justify-between items-center pt-4 mt-4 border-t border-gray-100">
           <span class="font-bold text-gray-900">Total</span>
-          <span class="font-bold text-brand-600 text-lg">${{ order.totalPrice?.toFixed(2) }}</span>
+          <span class="font-bold text-brand-600 text-lg">LKR {{ order.totalPrice?.toFixed(2) }}</span>
         </div>
       </div>
     </div>

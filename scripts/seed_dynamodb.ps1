@@ -12,19 +12,25 @@ Write-Host "`nSeeding DynamoDB tables..." -ForegroundColor Green
 function Put-Product {
     param($id, $name, $price, $desc, $stock, $seller)
     $now = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    # Multiply price by 300 for LKR conversion
+    $lkrPrice = [string]([decimal]$price * 300)
+    # Use generic placeholder image
+    $imageUrl = "https://via.placeholder.com/400x300/6366f1/ffffff?text=$([uri]::EscapeDataString($name))"
+    
     $obj = @{
         productId = @{ S = $id }
         name = @{ S = $name }
-        price = @{ N = $price }
+        price = @{ N = $lkrPrice }
         description = @{ S = $desc }
         stock = @{ N = $stock }
         sellerId = @{ S = $seller }
+        imageUrl = @{ S = $imageUrl }
         createdAt = @{ S = $now }
         updatedAt = @{ S = $now }
     }
     $json = ($obj | ConvertTo-Json -Compress -Depth 5)
     aws dynamodb put-item --table-name $ProductsTable --item $json --region $Region 2>$null
-    Write-Host "  + $name" -ForegroundColor Green
+    Write-Host "  + $name (LKR $lkrPrice)" -ForegroundColor Green
 }
 
 function Put-Review {

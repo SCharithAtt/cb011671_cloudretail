@@ -29,6 +29,8 @@
           </div>
           <button @click="addToCart" class="btn-brand">Add to Cart</button>
         </div>
+          </div>
+        </div>
       </div>
 
       <div class="card p-8">

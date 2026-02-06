@@ -5,47 +5,74 @@
         <span class="text-brand-600 text-4xl">&#128179;</span>
       </div>
       <h1 class="text-2xl font-bold text-gray-900 mb-2">Payment</h1>
-      <p class="text-gray-500 mb-6">Order #{{ orderId }}</p>
+      <p class="text-gray-500 mb-2">Order #{{ orderId }}</p>
 
-      <div v-if="loading" class="text-gray-500">Processing...</div>
+      <div v-if="loading" class="text-gray-500 py-4">Loading payment info...</div>
       <div v-else-if="error" class="bg-red-50 text-red-600 p-3 rounded-lg mb-4">{{ error }}</div>
 
-      <div v-if="paymentUrl" class="space-y-4">
-        <p class="text-gray-600">Click below to simulate payment:</p>
-        <a :href="paymentUrl" class="btn-brand w-full block text-center">Simulate Payment</a>
-      </div>
-      <div v-else-if="!loading" class="space-y-4">
-        <button @click="initiatePayment" class="btn-brand w-full">Initiate Payment</button>
-      </div>
+      <template v-if="!loading && !error">
+        <div class="bg-brand-50 rounded-lg p-4 mb-6">
+          <p class="text-sm text-brand-700 font-medium">Total Amount</p>
+          <p class="text-3xl font-bold text-brand-800">${{ totalPrice.toFixed(2) }}</p>
+          <p class="text-sm text-gray-500 mt-1">Status: {{ orderStatus }}</p>
+        </div>
+
+        <div v-if="orderStatus === 'pending'" class="space-y-4">
+          <label class="flex items-center gap-3 justify-center cursor-pointer">
+            <input type="checkbox" v-model="paid" class="w-5 h-5 accent-brand-500" />
+            <span class="text-gray-700 font-medium">I confirm payment</span>
+          </label>
+          <button @click="markPaymentDone" :disabled="!paid || processing" class="btn-brand w-full" :class="{ 'opacity-60 cursor-not-allowed': !paid || processing }">
+            {{ processing ? 'Processing...' : 'Complete Payment' }}
+          </button>
+        </div>
+
+        <div v-else class="space-y-4">
+          <p class="text-green-600 font-semibold">Payment completed!</p>
+          <router-link :to="`/order-confirmed/${orderId}`" class="btn-brand w-full block text-center">View Confirmation</router-link>
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { orderServiceApi } from '@/services/api'
 
 const route = useRoute()
+const router = useRouter()
 const orderId = route.params.orderId as string
 const loading = ref(true)
 const error = ref('')
-const paymentUrl = ref('')
+const processing = ref(false)
+const paid = ref(false)
+const totalPrice = ref(0)
+const orderStatus = ref('')
 
-const initiatePayment = async () => {
-  loading.value = true
-  error.value = ''
+onMounted(async () => {
   try {
     const response = await orderServiceApi.get(`/simulatePayment/${orderId}`)
-    paymentUrl.value = response.data.payment_url || ''
-    loading.value = false
+    totalPrice.value = response.data.totalPrice || 0
+    orderStatus.value = response.data.status || 'pending'
   } catch (err: any) {
-    error.value = err.response?.data?.error || 'Failed to initiate payment'
+    error.value = err.response?.data?.error || 'Failed to load payment info'
+  } finally {
     loading.value = false
   }
-}
-
-onMounted(() => {
-  initiatePayment()
 })
+
+const markPaymentDone = async () => {
+  processing.value = true
+  try {
+    await orderServiceApi.post(`/markPaymentDone/${orderId}`, { paid: true })
+    orderStatus.value = 'paid'
+    setTimeout(() => router.push(`/order-confirmed/${orderId}`), 1000)
+  } catch (err: any) {
+    error.value = err.response?.data?.error || 'Payment failed'
+  } finally {
+    processing.value = false
+  }
+}
 </script>

@@ -23,8 +23,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -43,7 +46,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	graphql "github.com/hasura/go-graphql-client"
 	"github.com/joho/godotenv"
 )
 
@@ -136,6 +138,7 @@ type ErrorResponse struct {
 type Config struct {
 	CognitoUserPoolID string
 	CognitoClientID   string
+	CognitoClientSecret string
 	CognitoRegion     string
 	ProductGraphQLURL string
 	OrderRESTURL      string
@@ -150,12 +153,13 @@ func loadConfig() {
 	}
 
 	config = Config{
-		CognitoUserPoolID: os.Getenv("COGNITO_USER_POOL_ID"),
-		CognitoClientID:   os.Getenv("COGNITO_CLIENT_ID"),
-		CognitoRegion:     os.Getenv("COGNITO_REGION"),
-		ProductGraphQLURL: os.Getenv("PRODUCT_GRAPHQL_URL"),
-		OrderRESTURL:      os.Getenv("ORDER_REST_URL"),
-		Port:              os.Getenv("PORT"),
+		CognitoUserPoolID:   os.Getenv("COGNITO_USER_POOL_ID"),
+		CognitoClientID:     os.Getenv("COGNITO_CLIENT_ID"),
+		CognitoClientSecret: os.Getenv("COGNITO_CLIENT_SECRET"),
+		CognitoRegion:       os.Getenv("COGNITO_REGION"),
+		ProductGraphQLURL:   os.Getenv("PRODUCT_GRAPHQL_URL"),
+		OrderRESTURL:        os.Getenv("ORDER_REST_URL"),
+		Port:                os.Getenv("PORT"),
 	}
 
 	// Defaults
@@ -305,13 +309,90 @@ func initCognitoClient() {
 }
 
 // =============================================================================
-// GraphQL Client (ProductService)
+// GraphQL HTTP Client (ProductService)
 // =============================================================================
 
-var productGQLClient *graphql.Client
+// computeSecretHash computes the SECRET_HASH required for Cognito API calls
+// when the app client has a secret configured.
+func computeSecretHash(username string) string {
+	if config.CognitoClientSecret == "" {
+		return ""
+	}
+	mac := hmac.New(sha256.New, []byte(config.CognitoClientSecret))
+	mac.Write([]byte(username + config.CognitoClientID))
+	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
+}
 
-func initGraphQLClient() {
-	productGQLClient = graphql.NewClient(config.ProductGraphQLURL, nil)
+// graphQLRequest sends a raw GraphQL HTTP request to the product service.
+func graphQLRequest(ctx context.Context, query string, variables map[string]interface{}, authHeader string) (map[string]interface{}, error) {
+	body := map[string]interface{}{
+		"query":     query,
+		"variables": variables,
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal GraphQL body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", config.ProductGraphQLURL, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GraphQL request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GraphQL request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data   map[string]interface{} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode GraphQL response: %w", err)
+	}
+
+	if len(result.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", result.Errors[0].Message)
+	}
+
+	return result.Data, nil
+}
+
+// authenticatedHTTPRequest sends an HTTP request with the auth header forwarded.
+func authenticatedHTTPRequest(method, url string, body interface{}, authHeader string) (*http.Response, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		jsonBody, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		bodyReader = bytes.NewBuffer(jsonBody)
+	}
+
+	req, err := http.NewRequest(method, url, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	return client.Do(req)
 }
 
 // =============================================================================
@@ -421,15 +502,22 @@ func HandleSellerLogin(c *gin.Context) {
 		return
 	}
 
+	// Build auth parameters with optional SECRET_HASH
+	authParams := map[string]string{
+		"USERNAME": input.Email,
+		"PASSWORD": input.Password,
+	}
+	secretHash := computeSecretHash(input.Email)
+	if secretHash != "" {
+		authParams["SECRET_HASH"] = secretHash
+	}
+
 	// Call Cognito InitiateAuth with USER_PASSWORD_AUTH
 	authOutput, err := cognitoClient.InitiateAuth(context.Background(),
 		&cognitoidentityprovider.InitiateAuthInput{
-			AuthFlow: types.AuthFlowTypeUserPasswordAuth,
-			ClientId: aws.String(config.CognitoClientID),
-			AuthParameters: map[string]string{
-				"USERNAME": input.Email,
-				"PASSWORD": input.Password,
-			},
+			AuthFlow:       types.AuthFlowTypeUserPasswordAuth,
+			ClientId:       aws.String(config.CognitoClientID),
+			AuthParameters: authParams,
 		},
 	)
 	if err != nil {
@@ -492,18 +580,22 @@ func HandleSellerRegister(c *gin.Context) {
 	ctx := context.Background()
 
 	// Sign up user in Cognito
-	signUpOutput, err := cognitoClient.SignUp(ctx,
-		&cognitoidentityprovider.SignUpInput{
-			ClientId: aws.String(config.CognitoClientID),
-			Username: aws.String(input.Email),
-			Password: aws.String(input.Password),
-			UserAttributes: []types.AttributeType{
-				{Name: aws.String("email"), Value: aws.String(input.Email)},
-				{Name: aws.String("name"), Value: aws.String(input.Name)},
-				{Name: aws.String("custom:role"), Value: aws.String("seller")},
-			},
+	signUpInput := &cognitoidentityprovider.SignUpInput{
+		ClientId: aws.String(config.CognitoClientID),
+		Username: aws.String(input.Email),
+		Password: aws.String(input.Password),
+		UserAttributes: []types.AttributeType{
+			{Name: aws.String("email"), Value: aws.String(input.Email)},
+			{Name: aws.String("name"), Value: aws.String(input.Name)},
+			{Name: aws.String("custom:role"), Value: aws.String("seller")},
 		},
-	)
+	}
+	secretHash := computeSecretHash(input.Email)
+	if secretHash != "" {
+		signUpInput.SecretHash = aws.String(secretHash)
+	}
+
+	signUpOutput, err := cognitoClient.SignUp(ctx, signUpInput)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Registration failed: " + err.Error()})
 		return
@@ -545,13 +637,12 @@ func HandleAddProduct(c *gin.Context) {
 	}
 
 	sellerID := c.GetString("sellerId")
+	authHeader := c.GetHeader("Authorization")
 
-	// GraphQL mutation to add product
-	var mutation struct {
-		AddProduct struct {
-			ProductID graphql.String `graphql:"productId"`
-		} `graphql:"addProduct(input: $input)"`
-	}
+	// GraphQL mutation to add product via raw HTTP
+	query := `mutation AddProduct($input: AddProductInput!) {
+		addProduct(input: $input) { productId name price stock }
+	}`
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
@@ -563,14 +654,22 @@ func HandleAddProduct(c *gin.Context) {
 		},
 	}
 
-	err := productGQLClient.Mutate(context.Background(), &mutation, variables)
+	data, err := graphQLRequest(context.Background(), query, variables, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to add product: " + err.Error()})
 		return
 	}
 
+	// Extract productId from response
+	productID := ""
+	if addProduct, ok := data["addProduct"].(map[string]interface{}); ok {
+		if pid, ok := addProduct["productId"].(string); ok {
+			productID = pid
+		}
+	}
+
 	c.JSON(http.StatusCreated, AddProductResponse{
-		ProductID: string(mutation.AddProduct.ProductID),
+		ProductID: productID,
 	})
 }
 
@@ -600,59 +699,53 @@ func HandleEditProduct(c *gin.Context) {
 		return
 	}
 
-	sellerID := c.GetString("sellerId")
+	authHeader := c.GetHeader("Authorization")
 
 	// Step 1: Verify ownership via GraphQL query
-	var query struct {
-		GetProductByID struct {
-			SellerID graphql.String `graphql:"sellerId"`
-		} `graphql:"getProductById(id: $id)"`
-	}
+	ownershipQuery := `query GetProductById($id: ID!) {
+		getProductById(id: $id) { sellerId }
+	}`
 
-	queryVars := map[string]interface{}{
-		"id": graphql.String(productID),
-	}
-
-	err := productGQLClient.Query(context.Background(), &query, queryVars)
+	ownershipVars := map[string]interface{}{"id": productID}
+	ownerData, err := graphQLRequest(context.Background(), ownershipQuery, ownershipVars, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to verify product ownership: " + err.Error()})
 		return
 	}
 
-	if string(query.GetProductByID.SellerID) != sellerID {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Access denied. You do not own this product."})
-		return
+	sellerID := c.GetString("sellerId")
+	if product, ok := ownerData["getProductById"].(map[string]interface{}); ok {
+		if productSeller, ok := product["sellerId"].(string); ok {
+			if productSeller != sellerID {
+				c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Access denied. You do not own this product."})
+				return
+			}
+		}
 	}
 
-	// Step 2: Mutate product
-	var mutation struct {
-		EditProduct struct {
-			ProductID graphql.String `graphql:"productId"`
-		} `graphql:"editProduct(input: $input)"`
+	// Step 2: Build edit input
+	editInput := map[string]interface{}{
+		"productId": productID,
 	}
-
-	updates := map[string]interface{}{}
 	if input.Name != nil {
-		updates["name"] = *input.Name
+		editInput["name"] = *input.Name
 	}
 	if input.Price != nil {
-		updates["price"] = *input.Price
+		editInput["price"] = *input.Price
 	}
 	if input.Description != nil {
-		updates["description"] = *input.Description
+		editInput["description"] = *input.Description
 	}
 	if input.Stock != nil {
-		updates["stock"] = *input.Stock
+		editInput["stock"] = *input.Stock
 	}
 
-	mutateVars := map[string]interface{}{
-		"input": map[string]interface{}{
-			"productId": productID,
-			"updates":   updates,
-		},
-	}
+	editQuery := `mutation EditProduct($input: EditProductInput!) {
+		editProduct(input: $input) { productId }
+	}`
 
-	err = productGQLClient.Mutate(context.Background(), &mutation, mutateVars)
+	editVars := map[string]interface{}{"input": editInput}
+	_, err = graphQLRequest(context.Background(), editQuery, editVars, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to update product: " + err.Error()})
 		return
@@ -671,10 +764,11 @@ func HandleEditProduct(c *gin.Context) {
 // @Router /orders [get]
 func HandleGetOrders(c *gin.Context) {
 	sellerID := c.GetString("sellerId")
+	authHeader := c.GetHeader("Authorization")
 
-	// Call OrderService REST API
+	// Call OrderService REST API with auth header forwarded
 	url := fmt.Sprintf("%s/getOrders?sellerId=%s", config.OrderRESTURL, sellerID)
-	resp, err := http.Get(url)
+	resp, err := authenticatedHTTPRequest("GET", url, nil, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to fetch orders: " + err.Error()})
 		return
@@ -730,23 +824,16 @@ func HandleUpdateOrderStatus(c *gin.Context) {
 	}
 
 	sellerID := c.GetString("sellerId")
+	authHeader := c.GetHeader("Authorization")
 
-	// Call OrderService REST API PUT /updateStatus/{orderId}
+	// Call OrderService REST API PUT /updateStatus/{orderId} with auth header
 	url := fmt.Sprintf("%s/updateStatus/%s", config.OrderRESTURL, orderID)
-	payload, _ := json.Marshal(map[string]string{
+	payload := map[string]string{
 		"status":   input.Status,
 		"sellerId": sellerID,
-	})
-
-	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(string(payload)))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to create request."})
-		return
 	}
-	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := authenticatedHTTPRequest("PUT", url, payload, authHeader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Failed to update order status: " + err.Error()})
 		return
@@ -784,10 +871,21 @@ func main() {
 	// Initialize services
 	initJWKSCache()
 	initCognitoClient()
-	initGraphQLClient()
 
 	// Create Gin router with default middleware (logger, recovery)
 	r := gin.Default()
+
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+		c.Next()
+	})
 
 	// Public routes (no authentication required)
 	r.GET("/health", HandleHealth)

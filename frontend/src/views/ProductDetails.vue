@@ -44,9 +44,9 @@
             <div v-for="(review, index) in product.reviews" :key="index" class="p-4 bg-gray-50 rounded-lg">
               <div class="flex justify-between items-center mb-2">
                 <span class="text-brand-500 text-lg">{{ '\u2605'.repeat(review.rating) }}<span class="text-gray-300">{{ '\u2605'.repeat(5 - review.rating) }}</span></span>
-                <span class="text-gray-400 text-sm">{{ formatDate(review.timestamp) }}</span>
+                <span class="text-gray-400 text-sm">{{ formatDate(review.createdAt) }}</span>
               </div>
-              <p class="text-gray-700">{{ review.comment }}</p>
+              <p class="text-gray-700">{{ review.text }}</p>
             </div>
           </template>
           <p v-else class="text-center text-gray-400 py-8">No reviews yet. Be the first to review!</p>
@@ -75,24 +75,24 @@ const newRating = ref(5)
 const loading = ref(true)
 const error = ref('')
 
-interface Review { rating: number; comment: string; timestamp: string }
-interface Product { product_id: string; name: string; description: string; price: number; stock: number; seller_id: string; reviews?: Review[] }
+interface Review { rating: number; text: string; userId: string; createdAt: string }
+interface Product { productId: string; name: string; description: string; price: number; stock: number; sellerId: string; reviews?: Review[] }
 
 const product = ref<Product | null>(null)
 
 const GET_PRODUCT = gql`
-  query GetProductById($productId: ID!) {
-    getProductById(productId: $productId) { product_id name description price stock seller_id reviews { rating comment timestamp } }
+  query GetProductById($id: ID!) {
+    getProductById(id: $id) { productId name description price stock sellerId reviews { reviewId text rating userId createdAt } }
   }
 `
 
 const ADD_REVIEW = gql`
-  mutation AddReview($productId: ID!, $rating: Int!, $comment: String!) {
-    addReview(productId: $productId, rating: $rating, comment: $comment) { product_id reviews { rating comment timestamp } }
+  mutation AddReview($input: AddReviewInput!) {
+    addReview(input: $input) { reviewId productId text rating userId createdAt }
   }
 `
 
-const { result, loading: queryLoading, error: queryError } = useQuery(GET_PRODUCT, { productId })
+const { result, loading: queryLoading, error: queryError } = useQuery(GET_PRODUCT, { id: productId })
 const { mutate: addReviewMutation } = useMutation(ADD_REVIEW)
 
 onMounted(() => {
@@ -108,7 +108,7 @@ onMounted(() => {
 
 const addToCart = () => {
   if (product.value) {
-    cartStore.addItem({ productId: product.value.product_id, quantity: quantity.value, name: product.value.name, price: product.value.price, sellerId: product.value.seller_id })
+    cartStore.addItem({ productId: product.value.productId, quantity: quantity.value, name: product.value.name, price: product.value.price, sellerId: product.value.sellerId })
     alert('Added to cart!')
   }
 }
@@ -116,7 +116,7 @@ const addToCart = () => {
 const submitReview = async () => {
   if (!newReview.value.trim()) { alert('Please write a review'); return }
   try {
-    await addReviewMutation({ productId, rating: newRating.value, comment: newReview.value })
+    await addReviewMutation({ input: { productId, text: newReview.value, rating: newRating.value, userId: authStore.userId } })
     newReview.value = ''; newRating.value = 5
     alert('Review submitted!'); window.location.reload()
   } catch { alert('Failed to submit review') }

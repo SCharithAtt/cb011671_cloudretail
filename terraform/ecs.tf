@@ -160,8 +160,8 @@ resource "aws_ecs_task_definition" "seller" {
       { name = "COGNITO_CLIENT_SECRET", value = var.cognito_client_secret },
       { name = "COGNITO_REGION", value = var.aws_region },
       { name = "AWS_REGION", value = var.aws_region },
-      { name = "PRODUCT_SERVICE_URL", value = "http://product-service.${local.name}.local:8082" },
-      { name = "ORDER_SERVICE_URL", value = "http://order-service.${local.name}.local:8083" },
+      { name = "PRODUCT_GRAPHQL_URL", value = "http://product-service.${local.name}.local:8082/graphql" },
+      { name = "ORDER_REST_URL", value = "http://order-service.${local.name}.local:8083" },
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -190,9 +190,12 @@ resource "aws_ecs_task_definition" "product" {
     environment = [
       { name = "PORT", value = "8082" },
       { name = "AWS_REGION", value = var.aws_region },
+      { name = "COGNITO_REGION", value = var.aws_region },
+      { name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id },
       { name = "DYNAMODB_ENDPOINT", value = "" },
       { name = "PRODUCTS_TABLE", value = aws_dynamodb_table.products.name },
       { name = "REVIEWS_TABLE", value = aws_dynamodb_table.reviews.name },
+      { name = "EVENT_BUS_NAME", value = aws_cloudwatch_event_bus.main.name },
     ]
     logConfiguration = {
       logDriver = "awslogs"

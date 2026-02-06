@@ -52,7 +52,7 @@ const placeOrder = async () => {
     }))
 
     const response = await orderServiceApi.post('/createOrder', { items })
-    const orderId = response.data.order?.order_id
+    const orderId = response.data.orderId
 
     cartStore.clear()
 

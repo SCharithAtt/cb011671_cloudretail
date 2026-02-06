@@ -22,17 +22,38 @@ const authStore = useAuthStore()
 const error = ref('')
 
 onMounted(async () => {
-  const code = route.query.code as string
-  if (code) {
+  // Check for error from backend
+  const errorParam = route.query.error as string
+  if (errorParam) {
+    const errorDesc = route.query.error_description as string
+    error.value = errorDesc || errorParam || 'Authentication failed.'
+    setTimeout(() => router.push('/login'), 3000)
+    return
+  }
+
+  // Read tokens passed by user_service callback redirect
+  const idToken = route.query.id_token as string
+  const accessToken = route.query.access_token as string
+  const refreshTokenParam = route.query.refresh_token as string
+
+  if (idToken) {
     try {
-      await authStore.handleOAuthCallback(code)
-      router.push('/')
+      authStore.handleOAuthCallback(idToken, accessToken, refreshTokenParam)
+      // Clean URL by replacing with home
+      router.replace('/')
     } catch (err) {
       error.value = 'Authentication failed. Please try again.'
       setTimeout(() => router.push('/login'), 3000)
     }
   } else {
-    error.value = 'No authorization code received.'
+    // If no tokens, might be a direct Cognito redirect with code
+    // (for local dev where user_service isn't in the path)
+    const code = route.query.code as string
+    if (code) {
+      error.value = 'Unexpected authorization code. Login flow may be misconfigured.'
+    } else {
+      error.value = 'No authentication tokens received.'
+    }
     setTimeout(() => router.push('/login'), 3000)
   }
 })

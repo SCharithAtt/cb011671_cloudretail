@@ -13,7 +13,7 @@
     </div>
 
     <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div v-for="product in products" :key="product.product_id" class="card overflow-hidden">
+      <div v-for="product in products" :key="product.productId" class="card overflow-hidden">
         <div class="h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
         <div class="p-5">
           <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ product.name }}</h3>
@@ -24,7 +24,7 @@
               Stock: {{ product.stock }}
             </span>
           </div>
-          <router-link :to="`/seller/products/edit/${product.product_id}`" class="btn-brand-outline w-full text-center block text-sm py-2">
+          <router-link :to="`/seller/products/edit/${product.productId}`" class="btn-brand-outline w-full text-center block text-sm py-2">
             Edit Product
           </router-link>
         </div>
@@ -38,14 +38,14 @@ import { ref, onMounted } from 'vue'
 import { useQuery } from '@vue/apollo-composable'
 import { gql } from '@apollo/client/core'
 
-interface Product { product_id: string; name: string; description: string; price: number; stock: number; seller_id: string }
+interface Product { productId: string; name: string; description: string; price: number; stock: number; sellerId: string }
 
 const products = ref<Product[]>([])
 const loading = ref(true)
 const error = ref('')
 
 const GET_ALL_PRODUCTS = gql`
-  query GetAllProducts { getAllProducts { product_id name description price stock seller_id } }
+  query GetAllProducts { getAllProducts { productId name description price stock sellerId } }
 `
 
 const { result, loading: queryLoading, error: queryError } = useQuery(GET_ALL_PRODUCTS)

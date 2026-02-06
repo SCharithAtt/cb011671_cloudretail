@@ -10,11 +10,11 @@
     </div>
 
     <div v-else class="space-y-4">
-      <div v-for="order in orders" :key="order.order_id" class="card p-6">
+      <div v-for="order in orders" :key="order.orderId" class="card p-6">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
           <div>
-            <p class="text-sm text-gray-500">Order #{{ order.order_id }}</p>
-            <p class="text-xs text-gray-400">{{ new Date(order.created_at).toLocaleString() }}</p>
+            <p class="text-sm text-gray-500">Order #{{ order.orderId }}</p>
+            <p class="text-xs text-gray-400">{{ new Date(order.createdAt).toLocaleString() }}</p>
           </div>
           <span :class="[
             'badge',
@@ -34,7 +34,7 @@
         </div>
         <div class="flex justify-between items-center pt-4 mt-4 border-t border-gray-100">
           <span class="font-bold text-gray-900">Total</span>
-          <span class="font-bold text-brand-600 text-lg">${{ order.total_price?.toFixed(2) }}</span>
+          <span class="font-bold text-brand-600 text-lg">${{ order.totalPrice?.toFixed(2) }}</span>
         </div>
       </div>
     </div>
@@ -52,7 +52,7 @@ const error = ref('')
 onMounted(async () => {
   try {
     const response = await orderServiceApi.get('/getOrders')
-    orders.value = response.data.orders || []
+    orders.value = response.data || []
   } catch (err) {
     error.value = 'Failed to load orders'
   } finally {

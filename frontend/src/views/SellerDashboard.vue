@@ -38,7 +38,7 @@ import { sellerServiceApi } from '@/services/api'
 const stats = ref({ totalProducts: 0, totalOrders: 0, totalRevenue: 0 })
 
 const GET_ALL_PRODUCTS = gql`
-  query GetAllProducts { getAllProducts { product_id seller_id } }
+  query GetAllProducts { getAllProducts { productId sellerId } }
 `
 
 const { result } = useQuery(GET_ALL_PRODUCTS)
@@ -47,9 +47,9 @@ onMounted(async () => {
   if (result.value) stats.value.totalProducts = result.value.getAllProducts?.length || 0
   try {
     const response = await sellerServiceApi.get('/orders')
-    const orders = response.data.orders || []
+    const orders = response.data || []
     stats.value.totalOrders = orders.length
-    stats.value.totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.total_price || 0), 0)
+    stats.value.totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0)
   } catch (err) {
     console.error('Failed to load stats:', err)
   }

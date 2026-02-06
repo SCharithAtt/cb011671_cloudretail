@@ -5,13 +5,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 )
@@ -20,11 +19,8 @@ import (
 // Models
 // =============================================================================
 
-// ClaimsPage holds data for rendering the claims template.
-type ClaimsPage struct {
-	AccessToken string
-	Claims      jwt.MapClaims
-}
+// frontendURL is the base URL of the frontend application (for redirects).
+var frontendURL string
 
 // =============================================================================
 // Global Variables (initialized from environment)
@@ -64,6 +60,12 @@ func init() {
 	}
 	if logoutURL == "" {
 		logoutURL = "http://localhost:8080"
+	}
+
+	// Frontend URL defaults to logoutURL (Amplify app URL)
+	frontendURL = os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = logoutURL
 	}
 
 	// Validate required environment variables
@@ -128,14 +130,16 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
-// handleCallback exchanges the authorization code for tokens and displays user claims.
+// handleCallback exchanges the authorization code for tokens and redirects to the frontend.
 func handleCallback(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	// Check for errors from Cognito
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		errDesc := r.URL.Query().Get("error_description")
-		http.Error(w, fmt.Sprintf("Authentication error: %s - %s", errMsg, errDesc), http.StatusBadRequest)
+		redirectURL := fmt.Sprintf("%s/callback?error=%s&error_description=%s",
+			frontendURL, url.QueryEscape(errMsg), url.QueryEscape(errDesc))
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
@@ -145,83 +149,42 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Verify state parameter in production
-	// state := r.URL.Query().Get("state")
-
 	// Exchange the authorization code for tokens
 	rawToken, err := oauth2Config.Exchange(ctx, code)
 	if err != nil {
-		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Token exchange failed: %v", err)
+		redirectURL := fmt.Sprintf("%s/callback?error=%s",
+			frontendURL, url.QueryEscape("Token exchange failed: "+err.Error()))
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 
-	tokenString := rawToken.AccessToken
+	// Extract tokens
+	accessToken := rawToken.AccessToken
+	refreshToken := rawToken.RefreshToken
 
-	// Parse the token (for production, verify the signature)
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
-	if err != nil {
-		http.Error(w, "Error parsing token: "+err.Error(), http.StatusInternalServerError)
-		return
+	// Extract ID token from extras (Cognito returns it in the token response)
+	idToken, _ := rawToken.Extra("id_token").(string)
+	if idToken == "" {
+		// Fallback: use access token as ID token
+		idToken = accessToken
 	}
 
-	// Extract claims
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		http.Error(w, "Invalid claims", http.StatusBadRequest)
-		return
-	}
+	// Redirect to frontend with tokens as query parameters
+	redirectURL := fmt.Sprintf("%s/callback?id_token=%s&access_token=%s&refresh_token=%s",
+		frontendURL,
+		url.QueryEscape(idToken),
+		url.QueryEscape(accessToken),
+		url.QueryEscape(refreshToken),
+	)
 
-	// Prepare data for rendering
-	pageData := ClaimsPage{
-		AccessToken: tokenString,
-		Claims:      claims,
-	}
-
-	// Define the HTML template
-	tmpl := `
-	<!DOCTYPE html>
-	<html>
-	<head>
-		<title>CloudRetail - User Information</title>
-		<style>
-			body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-			h1 { color: #333; }
-			.token { word-break: break-all; background: #f4f4f4; padding: 10px; border-radius: 5px; font-size: 12px; }
-			ul { list-style: none; padding: 0; }
-			li { padding: 8px; border-bottom: 1px solid #eee; }
-			li strong { display: inline-block; min-width: 150px; }
-			a { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; text-decoration: none; border-radius: 5px; }
-			a:hover { background: #c82333; }
-		</style>
-	</head>
-	<body>
-		<h1>User Information</h1>
-		<h2>Access Token</h2>
-		<p class="token">{{.AccessToken}}</p>
-		<h2>JWT Claims</h2>
-		<ul>
-			{{range $key, $value := .Claims}}
-				<li><strong>{{$key}}:</strong> {{$value}}</li>
-			{{end}}
-		</ul>
-		<a href="/logout">Logout</a>
-	</body>
-	</html>`
-
-	// Parse and execute the template
-	t := template.Must(template.New("claims").Parse(tmpl))
-	t.Execute(w, pageData)
+	log.Printf("Redirecting to frontend callback: %s/callback?...", frontendURL)
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
-// handleLogout clears user session and redirects to home.
+// handleLogout redirects to the frontend home page.
 func handleLogout(w http.ResponseWriter, r *http.Request) {
-	// In production, you would:
-	// 1. Clear the session/cookie
-	// 2. Optionally redirect to Cognito logout endpoint to clear Cognito session:
-	//    https://<domain>.auth.<region>.amazoncognito.com/logout?client_id=<client_id>&logout_uri=<logout_uri>
-
-	// For now, just redirect to home
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, frontendURL, http.StatusFound)
 }
 
 // handleHealth returns the health status of the service.
@@ -235,13 +198,27 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 // Main
 // =============================================================================
 
+// enableCORS adds CORS headers to allow frontend requests.
+func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next(w, r)
+	}
+}
+
 func main() {
 	// Set up routes
 	http.HandleFunc("/", handleHome)
 	http.HandleFunc("/login", handleLogin)
 	http.HandleFunc("/logout", handleLogout)
 	http.HandleFunc("/callback", handleCallback)
-	http.HandleFunc("/health", handleHealth)
+	http.HandleFunc("/health", enableCORS(handleHealth))
 
 	// Get port from environment or default to 8080
 	port := os.Getenv("PORT")

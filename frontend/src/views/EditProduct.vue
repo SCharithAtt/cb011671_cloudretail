@@ -55,12 +55,12 @@ const success = ref('')
 const form = ref({ name: '', description: '', price: 0, stock: 0 })
 
 const GET_PRODUCT = gql`
-  query GetProductById($productId: ID!) {
-    getProductById(productId: $productId) { product_id name description price stock }
+  query GetProductById($id: ID!) {
+    getProductById(id: $id) { productId name description price stock }
   }
 `
 
-const { result, loading: queryLoading } = useQuery(GET_PRODUCT, { productId })
+const { result, loading: queryLoading } = useQuery(GET_PRODUCT, { id: productId })
 
 onMounted(() => {
   const checkData = setInterval(() => {

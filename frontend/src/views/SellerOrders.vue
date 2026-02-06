@@ -9,11 +9,11 @@
     </div>
 
     <div v-else class="space-y-4">
-      <div v-for="order in orders" :key="order.order_id" class="card p-6">
+      <div v-for="order in orders" :key="order.orderId" class="card p-6">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
           <div>
-            <p class="font-medium text-gray-900">Order #{{ order.order_id }}</p>
-            <p class="text-xs text-gray-400">{{ new Date(order.created_at).toLocaleString() }}</p>
+            <p class="font-medium text-gray-900">Order #{{ order.orderId }}</p>
+            <p class="text-xs text-gray-400">{{ new Date(order.createdAt).toLocaleString() }}</p>
           </div>
           <div class="flex items-center gap-3">
             <select v-model="order.newStatus" class="input-field w-auto text-sm py-2">
@@ -41,7 +41,7 @@
             order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
             'bg-yellow-100 text-yellow-700'
           ]">{{ order.status }}</span>
-          <span class="font-bold text-brand-600 text-lg">${{ order.total_price?.toFixed(2) }}</span>
+          <span class="font-bold text-brand-600 text-lg">${{ order.totalPrice?.toFixed(2) }}</span>
         </div>
       </div>
     </div>
@@ -59,7 +59,7 @@ const error = ref('')
 onMounted(async () => {
   try {
     const response = await sellerServiceApi.get('/orders')
-    orders.value = (response.data.orders || []).map((o: any) => ({ ...o, newStatus: o.status }))
+    orders.value = (response.data || []).map((o: any) => ({ ...o, newStatus: o.status }))
   } catch (err) {
     error.value = 'Failed to load orders'
   } finally {
@@ -69,7 +69,7 @@ onMounted(async () => {
 
 const updateStatus = async (order: any) => {
   try {
-    await sellerServiceApi.put(`/updateOrderStatus/${order.order_id}`, { status: order.newStatus })
+    await sellerServiceApi.put(`/updateOrderStatus/${order.orderId}`, { status: order.newStatus })
     order.status = order.newStatus
     alert('Order status updated!')
   } catch (err) {

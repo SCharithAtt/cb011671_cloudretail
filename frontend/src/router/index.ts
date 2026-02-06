@@ -92,7 +92,7 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresRole: 'seller' }
   },
   {
-    path: '/seller/products/edit/:id',
+    path: '/seller/products/edit/:productId',
     name: 'EditProduct',
     component: () => import('@/views/EditProduct.vue'),
     props: true,

@@ -8,9 +8,9 @@
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       <div
         v-for="product in products"
-        :key="product.product_id"
+        :key="product.productId"
         class="card overflow-hidden cursor-pointer group hover:border-brand-200"
-        @click="goToProduct(product.product_id)"
+        @click="goToProduct(product.productId)"
       >
         <div class="h-2 bg-gradient-to-r from-brand-400 to-brand-500"></div>
         <div class="p-5">
@@ -53,12 +53,12 @@ const authStore = useAuthStore()
 const cartStore = useCartStore()
 
 interface Product {
-  product_id: string
+  productId: string
   name: string
   description: string
   price: number
   stock: number
-  seller_id: string
+  sellerId: string
 }
 
 const products = ref<Product[]>([])
@@ -68,12 +68,12 @@ const error = ref('')
 const GET_ALL_PRODUCTS = gql`
   query GetAllProducts {
     getAllProducts {
-      product_id
+      productId
       name
       description
       price
       stock
-      seller_id
+      sellerId
     }
   }
 `
@@ -100,7 +100,7 @@ setInterval(stopWatch, 100)
 const goToProduct = (productId: string) => router.push(`/products/${productId}`)
 
 const addToCart = (product: Product) => {
-  cartStore.addItem({ productId: product.product_id, quantity: 1, name: product.name, price: product.price, sellerId: product.seller_id })
+  cartStore.addItem({ productId: product.productId, quantity: 1, name: product.name, price: product.price, sellerId: product.sellerId })
   alert('Added to cart!')
 }
 </script>

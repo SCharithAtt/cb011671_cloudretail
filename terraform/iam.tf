@@ -111,6 +111,35 @@ resource "aws_iam_role_policy_attachment" "ecs_task" {
   policy_arn = aws_iam_policy.ecs_task.arn
 }
 
+# ── EC2 Instance Role for ECS ───────────────────────────────────────────────
+
+resource "aws_iam_role" "ecs_instance" {
+  name = "${local.name}-ecs-instance"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance" {
+  role       = aws_iam_role.ecs_instance.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_ssm" {
+  role       = aws_iam_role.ecs_instance.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ecs_instance" {
+  name = "${local.name}-ecs-instance-profile"
+  role = aws_iam_role.ecs_instance.name
+}
+
 # ── Lambda Execution Role ───────────────────────────────────────────────────
 
 resource "aws_iam_role" "lambda" {

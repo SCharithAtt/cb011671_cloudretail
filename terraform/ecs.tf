@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# ECS Fargate – Cluster · CloudMap · Task Definitions · Services
+# ECS EC2 – Cluster · CloudMap · Task Definitions · Services
 # ─────────────────────────────────────────────────────────────────────────────
 
 resource "aws_ecs_cluster" "main" {
@@ -11,6 +11,38 @@ resource "aws_ecs_cluster" "main" {
   }
 
   tags = { Name = "${local.name}-cluster" }
+}
+
+# ── Capacity Provider ───────────────────────────────────────────────────────
+
+resource "aws_ecs_capacity_provider" "ec2" {
+  name = "${local.name}-ec2-capacity-provider"
+
+  auto_scaling_group_provider {
+    auto_scaling_group_arn         = aws_autoscaling_group.ecs.arn
+    managed_termination_protection = "ENABLED"
+
+    managed_scaling {
+      status                    = "ENABLED"
+      target_capacity           = 80
+      minimum_scaling_step_size = 1
+      maximum_scaling_step_size = 100
+    }
+  }
+
+  tags = { Name = "${local.name}-capacity-provider" }
+}
+
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  cluster_name = aws_ecs_cluster.main.name
+
+  capacity_providers = [aws_ecs_capacity_provider.ec2.name]
+
+  default_capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.ec2.name
+    weight            = 100
+    base              = 1
+  }
 }
 
 # ── Service Discovery (Cloud Map) ──────────────────────────────────────────
@@ -108,7 +140,7 @@ resource "aws_cloudwatch_log_group" "order" {
 
 resource "aws_ecs_task_definition" "user" {
   family                   = "${local.name}-user"
-  requires_compatibilities = ["FARGATE"]
+  requires_compatibilities = ["EC2"]
   network_mode             = "awsvpc"
   cpu                      = var.ecs_cpu
   memory                   = var.ecs_memory
@@ -116,8 +148,8 @@ resource "aws_ecs_task_definition" "user" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
-    name  = "user-service"
-    image = "${aws_ecr_repository.user_service.repository_url}:latest"
+    name         = "user-service"
+    image        = "${aws_ecr_repository.user_service.repository_url}:latest"
     portMappings = [{ containerPort = 8080, protocol = "tcp" }]
     environment = [
       { name = "PORT", value = "8080" },
@@ -142,7 +174,7 @@ resource "aws_ecs_task_definition" "user" {
 
 resource "aws_ecs_task_definition" "seller" {
   family                   = "${local.name}-seller"
-  requires_compatibilities = ["FARGATE"]
+  requires_compatibilities = ["EC2"]
   network_mode             = "awsvpc"
   cpu                      = var.ecs_cpu
   memory                   = var.ecs_memory
@@ -150,8 +182,8 @@ resource "aws_ecs_task_definition" "seller" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
-    name  = "seller-service"
-    image = "${aws_ecr_repository.seller_service.repository_url}:latest"
+    name         = "seller-service"
+    image        = "${aws_ecr_repository.seller_service.repository_url}:latest"
     portMappings = [{ containerPort = 8081, protocol = "tcp" }]
     environment = [
       { name = "PORT", value = "8081" },
@@ -176,7 +208,7 @@ resource "aws_ecs_task_definition" "seller" {
 
 resource "aws_ecs_task_definition" "product" {
   family                   = "${local.name}-product"
-  requires_compatibilities = ["FARGATE"]
+  requires_compatibilities = ["EC2"]
   network_mode             = "awsvpc"
   cpu                      = var.ecs_cpu
   memory                   = var.ecs_memory
@@ -184,8 +216,8 @@ resource "aws_ecs_task_definition" "product" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
-    name  = "product-service"
-    image = "${aws_ecr_repository.product_service.repository_url}:latest"
+    name         = "product-service"
+    image        = "${aws_ecr_repository.product_service.repository_url}:latest"
     portMappings = [{ containerPort = 8082, protocol = "tcp" }]
     environment = [
       { name = "PORT", value = "8082" },
@@ -210,7 +242,7 @@ resource "aws_ecs_task_definition" "product" {
 
 resource "aws_ecs_task_definition" "order" {
   family                   = "${local.name}-order"
-  requires_compatibilities = ["FARGATE"]
+  requires_compatibilities = ["EC2"]
   network_mode             = "awsvpc"
   cpu                      = var.ecs_cpu
   memory                   = var.ecs_memory
@@ -218,8 +250,8 @@ resource "aws_ecs_task_definition" "order" {
   task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
-    name  = "order-service"
-    image = "${aws_ecr_repository.order_service.repository_url}:latest"
+    name         = "order-service"
+    image        = "${aws_ecr_repository.order_service.repository_url}:latest"
     portMappings = [{ containerPort = 8083, protocol = "tcp" }]
     environment = [
       { name = "PORT", value = "8083" },
@@ -250,7 +282,12 @@ resource "aws_ecs_service" "user" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.user.arn
   desired_count   = var.desired_count
-  launch_type     = "FARGATE"
+
+  capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.ec2.name
+    weight            = 100
+    base              = 1
+  }
 
   network_configuration {
     subnets         = aws_subnet.private[*].id
@@ -275,7 +312,12 @@ resource "aws_ecs_service" "seller" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.seller.arn
   desired_count   = var.desired_count
-  launch_type     = "FARGATE"
+
+  capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.ec2.name
+    weight            = 100
+    base              = 1
+  }
 
   network_configuration {
     subnets         = aws_subnet.private[*].id
@@ -300,7 +342,12 @@ resource "aws_ecs_service" "product" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.product.arn
   desired_count   = var.desired_count
-  launch_type     = "FARGATE"
+
+  capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.ec2.name
+    weight            = 100
+    base              = 1
+  }
 
   network_configuration {
     subnets         = aws_subnet.private[*].id
@@ -325,7 +372,12 @@ resource "aws_ecs_service" "order" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.order.arn
   desired_count   = var.desired_count
-  launch_type     = "FARGATE"
+
+  capacity_provider_strategy {
+    capacity_provider = aws_ecs_capacity_provider.ec2.name
+    weight            = 100
+    base              = 1
+  }
 
   network_configuration {
     subnets         = aws_subnet.private[*].id
@@ -343,4 +395,184 @@ resource "aws_ecs_service" "order" {
   }
 
   depends_on = [aws_lb_listener.http]
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Service Auto Scaling (scale task count based on load)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── User Service Auto Scaling ───────────────────────────────────────────────
+
+resource "aws_appautoscaling_target" "user" {
+  max_capacity       = 10
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.user.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "user_cpu" {
+  name               = "${local.name}-user-cpu-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.user.resource_id
+  scalable_dimension = aws_appautoscaling_target.user.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.user.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
+resource "aws_appautoscaling_policy" "user_memory" {
+  name               = "${local.name}-user-memory-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.user.resource_id
+  scalable_dimension = aws_appautoscaling_target.user.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.user.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
+# ── Seller Service Auto Scaling ─────────────────────────────────────────────
+
+resource "aws_appautoscaling_target" "seller" {
+  max_capacity       = 10
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.seller.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "seller_cpu" {
+  name               = "${local.name}-seller-cpu-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.seller.resource_id
+  scalable_dimension = aws_appautoscaling_target.seller.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.seller.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
+resource "aws_appautoscaling_policy" "seller_memory" {
+  name               = "${local.name}-seller-memory-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.seller.resource_id
+  scalable_dimension = aws_appautoscaling_target.seller.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.seller.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
+# ── Product Service Auto Scaling ────────────────────────────────────────────
+
+resource "aws_appautoscaling_target" "product" {
+  max_capacity       = 10
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.product.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "product_cpu" {
+  name               = "${local.name}-product-cpu-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.product.resource_id
+  scalable_dimension = aws_appautoscaling_target.product.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.product.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
+resource "aws_appautoscaling_policy" "product_memory" {
+  name               = "${local.name}-product-memory-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.product.resource_id
+  scalable_dimension = aws_appautoscaling_target.product.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.product.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
+# ── Order Service Auto Scaling ──────────────────────────────────────────────
+
+resource "aws_appautoscaling_target" "order" {
+  max_capacity       = 10
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.order.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "order_cpu" {
+  name               = "${local.name}-order-cpu-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.order.resource_id
+  scalable_dimension = aws_appautoscaling_target.order.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.order.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+
+resource "aws_appautoscaling_policy" "order_memory" {
+  name               = "${local.name}-order-memory-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.order.resource_id
+  scalable_dimension = aws_appautoscaling_target.order.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.order.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
 }

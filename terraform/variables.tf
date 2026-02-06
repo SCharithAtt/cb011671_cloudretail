@@ -64,21 +64,53 @@ variable "db_name" {
 # ── ECS ──────────────────────────────────────────────────────────────────────
 
 variable "ecs_cpu" {
-  description = "Fargate task CPU units (1024 = 1 vCPU)"
+  description = "ECS task CPU units (1024 = 1 vCPU)"
   type        = number
   default     = 512
 }
 
 variable "ecs_memory" {
-  description = "Fargate task memory (MiB)"
+  description = "ECS task memory (MiB)"
   type        = number
-  default     = 1024
+  default     = 512
 }
 
 variable "desired_count" {
   description = "Desired number of ECS tasks per service"
   type        = number
   default     = 2
+}
+
+# ── EC2 for ECS ──────────────────────────────────────────────────────────────
+
+variable "ecs_instance_type" {
+  description = "EC2 instance type for ECS cluster"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "ecs_asg_min_size" {
+  description = "Minimum number of EC2 instances in Auto Scaling Group"
+  type        = number
+  default     = 2
+}
+
+variable "ecs_asg_max_size" {
+  description = "Maximum number of EC2 instances in Auto Scaling Group"
+  type        = number
+  default     = 6
+}
+
+variable "ecs_asg_desired_capacity" {
+  description = "Desired number of EC2 instances in Auto Scaling Group"
+  type        = number
+  default     = 2
+}
+
+variable "ecs_key_pair_name" {
+  description = "Optional EC2 key pair name for SSH access to ECS instances"
+  type        = string
+  default     = ""
 }
 
 # ── Amplify ──────────────────────────────────────────────────────────────────

@@ -44,13 +44,13 @@ variable "cognito_client_secret" {
 # ── RDS ──────────────────────────────────────────────────────────────────────
 
 variable "db_master_username" {
-  description = "Master username for Aurora PostgreSQL"
+  description = "Master username for RDS PostgreSQL"
   type        = string
   default     = "postgres"
 }
 
 variable "db_master_password" {
-  description = "Master password for Aurora PostgreSQL"
+  description = "Master password for RDS PostgreSQL"
   type        = string
   sensitive   = true
 }

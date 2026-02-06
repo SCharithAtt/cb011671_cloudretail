@@ -24,40 +24,60 @@ resource "aws_service_discovery_service" "user" {
   name = "user-service"
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.main.id
-    dns_records { type = "A"; ttl = 10 }
+    dns_records {
+      type = "A"
+      ttl  = 10
+    }
     routing_policy = "MULTIVALUE"
   }
-  health_check_custom_config { failure_threshold = 1 }
+  health_check_custom_config {
+    failure_threshold = 1
+  }
 }
 
 resource "aws_service_discovery_service" "seller" {
   name = "seller-service"
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.main.id
-    dns_records { type = "A"; ttl = 10 }
+    dns_records {
+      type = "A"
+      ttl  = 10
+    }
     routing_policy = "MULTIVALUE"
   }
-  health_check_custom_config { failure_threshold = 1 }
+  health_check_custom_config {
+    failure_threshold = 1
+  }
 }
 
 resource "aws_service_discovery_service" "product" {
   name = "product-service"
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.main.id
-    dns_records { type = "A"; ttl = 10 }
+    dns_records {
+      type = "A"
+      ttl  = 10
+    }
     routing_policy = "MULTIVALUE"
   }
-  health_check_custom_config { failure_threshold = 1 }
+  health_check_custom_config {
+    failure_threshold = 1
+  }
 }
 
 resource "aws_service_discovery_service" "order" {
   name = "order-service"
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.main.id
-    dns_records { type = "A"; ttl = 10 }
+    dns_records {
+      type = "A"
+      ttl  = 10
+    }
     routing_policy = "MULTIVALUE"
   }
-  health_check_custom_config { failure_threshold = 1 }
+  health_check_custom_config {
+    failure_threshold = 1
+  }
 }
 
 # ── CloudWatch Log Groups ──────────────────────────────────────────────────
@@ -198,7 +218,7 @@ resource "aws_ecs_task_definition" "order" {
     environment = [
       { name = "PORT", value = "8083" },
       { name = "AWS_REGION", value = var.aws_region },
-      { name = "DATABASE_URL", value = "postgres://${var.db_master_username}:${var.db_master_password}@${aws_rds_cluster.main.endpoint}:5432/${var.db_name}?sslmode=require" },
+      { name = "DATABASE_URL", value = "postgres://${var.db_master_username}:${var.db_master_password}@${aws_db_instance.main.endpoint}/${var.db_name}?sslmode=require" },
       { name = "PRODUCT_SERVICE_URL", value = "http://product-service.${local.name}.local:8082" },
       { name = "EVENTBRIDGE_BUS_NAME", value = aws_cloudwatch_event_bus.main.name },
     ]

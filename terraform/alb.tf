@@ -141,13 +141,26 @@ resource "aws_lb_listener_rule" "product" {
   }
 }
 
-# /order* → order_service
+# /order* → order_service (split into two rules – AWS allows max 5 path values per rule)
 resource "aws_lb_listener_rule" "order" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 400
 
   condition {
-    path_pattern { values = ["/createOrder*", "/simulatePayment*", "/markPaymentDone*", "/orderConfirmed*", "/getOrders*", "/updateStatus*"] }
+    path_pattern { values = ["/createOrder*", "/simulatePayment*", "/markPaymentDone*", "/orderConfirmed*", "/getOrders*"] }
+  }
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.order.arn
+  }
+}
+
+resource "aws_lb_listener_rule" "order_extra" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 401
+
+  condition {
+    path_pattern { values = ["/updateStatus*"] }
   }
   action {
     type             = "forward"

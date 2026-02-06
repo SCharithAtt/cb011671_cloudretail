@@ -8,26 +8,27 @@ resource "aws_amplify_app" "frontend" {
   name       = "${local.name}-frontend"
   repository = var.github_repo_url
 
-  access_token = var.github_token
+  oauth_token = var.github_token
 
   build_spec = <<-YAML
     version: 1
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - cd frontend
-            - npm ci
-        build:
-          commands:
-            - npm run build
-      artifacts:
-        baseDirectory: frontend/dist
-        files:
-          - '**/*'
-      cache:
-        paths:
-          - frontend/node_modules/**/*
+    applications:
+      - appRoot: frontend
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - npm ci
+            build:
+              commands:
+                - npm run build
+          artifacts:
+            baseDirectory: dist
+            files:
+              - '**/*'
+          cache:
+            paths:
+              - node_modules/**/*
   YAML
 
   custom_rule {
@@ -37,10 +38,12 @@ resource "aws_amplify_app" "frontend" {
   }
 
   environment_variables = {
-    VITE_API_BASE_URL    = aws_apigatewayv2_api.main.api_endpoint
-    VITE_COGNITO_DOMAIN  = "https://${local.name}.auth.${var.aws_region}.amazoncognito.com"
-    VITE_COGNITO_CLIENT_ID = var.cognito_client_id
-    VITE_REDIRECT_URI    = "https://main.${aws_amplify_app.frontend[0].default_domain}/callback"
+    AMPLIFY_MONOREPO_APP_ROOT = "frontend"
+    AMPLIFY_DIFF_DEPLOY       = "false"
+    VITE_API_GATEWAY_URL      = aws_apigatewayv2_api.main.api_endpoint
+    VITE_GRAPHQL_URL          = "${aws_apigatewayv2_api.main.api_endpoint}/graphql"
+    VITE_COGNITO_DOMAIN       = "https://${local.name}.auth.${var.aws_region}.amazoncognito.com"
+    VITE_COGNITO_CLIENT_ID    = var.cognito_client_id
   }
 
   tags = { Name = "${local.name}-frontend" }
@@ -56,5 +59,6 @@ resource "aws_amplify_branch" "main" {
 
   environment_variables = {
     VITE_API_BASE_URL = aws_apigatewayv2_api.main.api_endpoint
+    VITE_REDIRECT_URI = "https://main.${aws_amplify_app.frontend[0].default_domain}/callback"
   }
 }

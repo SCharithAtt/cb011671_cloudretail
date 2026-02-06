@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 data "aws_cognito_user_pools" "main" {
-  name = "cloudretail"
+  name = "cb011671_cloudretail"
 }
 
 # Optionally create a Cognito User Pool if one doesn't already exist

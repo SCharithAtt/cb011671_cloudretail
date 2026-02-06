@@ -63,13 +63,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(credentials: LoginCredentials) {
-    const baseUrl = credentials.service === 'seller' 
-      ? import.meta.env.VITE_SELLER_SERVICE_URL || 'http://localhost:8081'
-      : import.meta.env.VITE_USER_SERVICE_URL || 'http://localhost:8080'
+    // In production, all requests go through API Gateway
+    const baseUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080'
 
     try {
       if (credentials.service === 'seller') {
-        // Seller login via SellerService
+        // Seller login via SellerService (routed through API Gateway)
         const response = await axios.post(`${baseUrl}/sellerLogin`, {
           email: credentials.email,
           password: credentials.password
@@ -104,7 +103,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function registerSeller(credentials: Required<LoginCredentials>) {
-    const baseUrl = import.meta.env.VITE_SELLER_SERVICE_URL || 'http://localhost:8081'
+    // In production, all requests go through API Gateway
+    const baseUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080'
 
     try {
       const response = await axios.post(`${baseUrl}/sellerRegister`, {

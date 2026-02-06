@@ -13,8 +13,8 @@ output "alb_dns_name" {
 }
 
 output "rds_endpoint" {
-  description = "Aurora PostgreSQL writer endpoint"
-  value       = aws_rds_cluster.main.endpoint
+  description = "RDS PostgreSQL endpoint"
+  value       = aws_db_instance.main.endpoint
 }
 
 output "ecr_repositories" {

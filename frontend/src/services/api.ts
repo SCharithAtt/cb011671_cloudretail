@@ -62,19 +62,21 @@ api.interceptors.response.use(
   }
 )
 
-// Service-specific API instances
+// Service-specific API instances (all use API Gateway URL in production)
+const apiGatewayUrl = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080'
+
 export const userServiceApi = axios.create({
-  baseURL: import.meta.env.VITE_USER_SERVICE_URL || 'http://localhost:8080',
+  baseURL: apiGatewayUrl,
   timeout: 30000
 })
 
 export const sellerServiceApi = axios.create({
-  baseURL: import.meta.env.VITE_SELLER_SERVICE_URL || 'http://localhost:8081',
+  baseURL: apiGatewayUrl,
   timeout: 30000
 })
 
 export const orderServiceApi = axios.create({
-  baseURL: import.meta.env.VITE_ORDER_SERVICE_URL || 'http://localhost:8083',
+  baseURL: apiGatewayUrl,
   timeout: 30000
 })
 

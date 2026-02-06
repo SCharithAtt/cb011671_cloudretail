@@ -45,7 +45,7 @@
 
       <p class="text-center mt-6 text-gray-500 text-sm">
         Don't have an account?
-        <router-link to="/register" class="text-brand-600 font-medium hover:text-brand-700">Register here</router-link>
+        <a @click="handleCognitoSignup" class="text-brand-600 font-medium hover:text-brand-700 cursor-pointer">Register here</a>
       </p>
     </div>
   </div>
@@ -83,5 +83,19 @@ const handleSellerLogin = async () => {
   } else {
     error.value = result.error || 'Login failed'
   }
+}
+
+const cognitoDomain = import.meta.env.VITE_COGNITO_DOMAIN || 'https://cloudretail.auth.us-east-1.amazoncognito.com'
+const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID || ''
+const redirectUri = import.meta.env.VITE_REDIRECT_URI || `${window.location.origin}/callback`
+
+const handleCognitoSignup = () => {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: 'code',
+    scope: 'openid email profile',
+    redirect_uri: redirectUri
+  })
+  window.location.href = `${cognitoDomain}/signup?${params.toString()}`
 }
 </script>

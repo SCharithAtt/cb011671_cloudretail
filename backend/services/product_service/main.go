@@ -72,6 +72,7 @@ type DynamoProduct struct {
 	Description string   `dynamodbav:"description"`
 	Stock       int      `dynamodbav:"stock"`
 	SellerID    string   `dynamodbav:"sellerId"`
+	ImageURL    string   `dynamodbav:"imageUrl"`
 	CreatedAt   string   `dynamodbav:"createdAt"`
 	UpdatedAt   string   `dynamodbav:"updatedAt"`
 }
@@ -451,6 +452,7 @@ func (r *queryResolver) GetProductByID(ctx context.Context, id string) (*model.P
 		Description: &product.Description,
 		Stock:       product.Stock,
 		SellerID:    product.SellerID,
+		ImageUrl:    &product.ImageURL,
 		Reviews:     reviews,
 		CreatedAt:   &product.CreatedAt,
 		UpdatedAt:   &product.UpdatedAt,
@@ -503,6 +505,7 @@ func (r *queryResolver) GetAllProducts(ctx context.Context, filter *model.Produc
 			Description: &product.Description,
 			Stock:       product.Stock,
 			SellerID:    product.SellerID,
+			ImageUrl:    &product.ImageURL,
 			Reviews:     reviews,
 			CreatedAt:   &product.CreatedAt,
 			UpdatedAt:   &product.UpdatedAt,
@@ -544,6 +547,11 @@ func (r *mutationResolver) AddProduct(ctx context.Context, input model.AddProduc
 		description = *input.Description
 	}
 
+	imageUrl := ""
+	if input.ImageUrl != nil {
+		imageUrl = *input.ImageUrl
+	}
+
 	product := DynamoProduct{
 		ProductID:   productID,
 		Name:        input.Name,
@@ -551,6 +559,7 @@ func (r *mutationResolver) AddProduct(ctx context.Context, input model.AddProduc
 		Description: description,
 		Stock:       input.Stock,
 		SellerID:    input.SellerID,
+		ImageURL:    imageUrl,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -576,6 +585,7 @@ func (r *mutationResolver) AddProduct(ctx context.Context, input model.AddProduc
 		Description: &product.Description,
 		Stock:       product.Stock,
 		SellerID:    product.SellerID,
+		ImageUrl:    &product.ImageURL,
 		Reviews:     []*model.Review{},
 		CreatedAt:   &product.CreatedAt,
 		UpdatedAt:   &product.UpdatedAt,
@@ -653,6 +663,11 @@ func (r *mutationResolver) EditProduct(ctx context.Context, input model.EditProd
 		}
 	}
 
+	if input.ImageUrl != nil {
+		updateExpr += ", imageUrl = :imageUrl"
+		exprAttrValues[":imageUrl"] = &types.AttributeValueMemberS{Value: *input.ImageUrl}
+	}
+
 	exprAttrNames := map[string]string{
 		"#name": "name", // 'name' is a reserved keyword in DynamoDB
 	}
@@ -700,6 +715,7 @@ func (r *mutationResolver) EditProduct(ctx context.Context, input model.EditProd
 		Description: &updatedProduct.Description,
 		Stock:       updatedProduct.Stock,
 		SellerID:    updatedProduct.SellerID,
+		ImageUrl:    &updatedProduct.ImageURL,
 		Reviews:     reviews,
 		CreatedAt:   &updatedProduct.CreatedAt,
 		UpdatedAt:   &updatedProduct.UpdatedAt,

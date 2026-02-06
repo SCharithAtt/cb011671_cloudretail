@@ -13,6 +13,7 @@ input AddProductInput {
   description: String
   stock: Int!
   sellerId: String!
+  imageUrl: String
 }
 
 # Input for editing an existing product
@@ -22,6 +23,7 @@ input EditProductInput {
   price: Float
   description: String
   stock: Int
+  imageUrl: String
 }
 
 # Input for adding a product review
@@ -50,6 +52,7 @@ type Product {
   description: String
   stock: Int!
   sellerId: String!
+  imageUrl: String
   reviews: [Review!]!
   createdAt: String
   updatedAt: String

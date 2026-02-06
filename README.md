@@ -20,7 +20,7 @@ A full-stack e-commerce platform built with **Go microservices**, **Vue 3** fron
                           ┌───────────────────────────┼───────────────────┐
                           │                           │                   │
                    ┌──────▼──────┐            ┌───────▼─────┐    ┌───────▼──────┐
-                   │ Aurora       │            │ EventBridge │    │  DynamoDB    │
+                   │    RDS       │            │ EventBridge │    │  DynamoDB    │
                    │ PostgreSQL   │            │  Event Bus  │    │  Products    │
                    │ (Orders DB)  │            └──────┬──────┘    │  Reviews     │
                    └─────────────┘                    │           └──────────────┘
@@ -37,13 +37,13 @@ A full-stack e-commerce platform built with **Go microservices**, **Vue 3** fron
 | **user_service** | 8080 | net/http | - | Cognito OIDC/OAuth2 |
 | **seller_service** | 8081 | Gin | - | Cognito SDK (Admin) |
 | **product_service** | 8082 | Gin + gqlgen | DynamoDB | JWT |
-| **order_service** | 8083 | Gin + GORM | Aurora PostgreSQL | JWT |
+| **order_service** | 8083 | Gin + GORM | RDS PostgreSQL | JWT |
 
 ## AWS Services Used
 
 - **ECS Fargate** – Container orchestration for all 4 microservices
 - **ECR** – Docker image registry
-- **RDS Aurora PostgreSQL Serverless v2** – Order database
+- **RDS PostgreSQL (db.t3.micro)** – Order database
 - **DynamoDB** – Products & Reviews tables
 - **API Gateway (HTTP API)** – Unified API endpoint with CORS
 - **Application Load Balancer** – Path-based routing to services

@@ -124,8 +124,10 @@ resource "aws_ecs_task_definition" "user" {
       { name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id },
       { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
       { name = "COGNITO_CLIENT_SECRET", value = var.cognito_client_secret },
+      { name = "COGNITO_REGION", value = var.aws_region },
       { name = "AWS_REGION", value = var.aws_region },
-      { name = "REDIRECT_URL", value = "http://${aws_lb.main.dns_name}/callback" },
+      { name = "COGNITO_REDIRECT_URL", value = "https://${aws_apigatewayv2_api.main.api_endpoint}/callback" },
+      { name = "COGNITO_LOGOUT_URL", value = "https://main.${aws_amplify_app.frontend[0].default_domain}" },
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -156,6 +158,7 @@ resource "aws_ecs_task_definition" "seller" {
       { name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id },
       { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
       { name = "COGNITO_CLIENT_SECRET", value = var.cognito_client_secret },
+      { name = "COGNITO_REGION", value = var.aws_region },
       { name = "AWS_REGION", value = var.aws_region },
       { name = "PRODUCT_SERVICE_URL", value = "http://product-service.${local.name}.local:8082" },
       { name = "ORDER_SERVICE_URL", value = "http://order-service.${local.name}.local:8083" },
@@ -218,9 +221,11 @@ resource "aws_ecs_task_definition" "order" {
     environment = [
       { name = "PORT", value = "8083" },
       { name = "AWS_REGION", value = var.aws_region },
-      { name = "DATABASE_URL", value = "postgres://${var.db_master_username}:${var.db_master_password}@${aws_db_instance.main.endpoint}/${var.db_name}?sslmode=require" },
-      { name = "PRODUCT_SERVICE_URL", value = "http://product-service.${local.name}.local:8082" },
-      { name = "EVENTBRIDGE_BUS_NAME", value = aws_cloudwatch_event_bus.main.name },
+      { name = "COGNITO_REGION", value = var.aws_region },
+      { name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id },
+      { name = "RDS_DSN", value = "postgres://${var.db_master_username}:${var.db_master_password}@${aws_db_instance.main.endpoint}/${var.db_name}?sslmode=require" },
+      { name = "PRODUCT_GRAPHQL_URL", value = "http://product-service.${local.name}.local:8082/graphql" },
+      { name = "EVENTBRIDGE_BUS_ARN", value = aws_cloudwatch_event_bus.main.arn },
     ]
     logConfiguration = {
       logDriver = "awslogs"

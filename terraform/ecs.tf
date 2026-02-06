@@ -126,7 +126,7 @@ resource "aws_ecs_task_definition" "user" {
       { name = "COGNITO_CLIENT_SECRET", value = var.cognito_client_secret },
       { name = "COGNITO_REGION", value = var.aws_region },
       { name = "AWS_REGION", value = var.aws_region },
-      { name = "COGNITO_REDIRECT_URL", value = "https://${aws_apigatewayv2_api.main.api_endpoint}/callback" },
+      { name = "COGNITO_REDIRECT_URL", value = "${aws_apigatewayv2_api.main.api_endpoint}/callback" },
       { name = "COGNITO_LOGOUT_URL", value = "https://main.${aws_amplify_app.frontend[0].default_domain}" },
     ]
     logConfiguration = {

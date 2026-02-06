@@ -42,8 +42,9 @@ resource "aws_amplify_app" "frontend" {
     AMPLIFY_DIFF_DEPLOY       = "false"
     VITE_API_GATEWAY_URL      = aws_apigatewayv2_api.main.api_endpoint
     VITE_GRAPHQL_URL          = "${aws_apigatewayv2_api.main.api_endpoint}/graphql"
-    VITE_COGNITO_DOMAIN       = "https://${local.name}.auth.${var.aws_region}.amazoncognito.com"
+    VITE_COGNITO_DOMAIN       = "https://us-east-1ejvqflh2p.auth.${var.aws_region}.amazoncognito.com"
     VITE_COGNITO_CLIENT_ID    = var.cognito_client_id
+    VITE_REDIRECT_URI         = "https://main.d1zj0qo7tbzc0o.amplifyapp.com/callback"
   }
 
   tags = { Name = "${local.name}-frontend" }

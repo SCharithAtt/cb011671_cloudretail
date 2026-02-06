@@ -3,6 +3,7 @@ terraform/.terraform/
 terraform/.terraform.lock.hcl
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
+terraform/terraform.tfstate.*.backup
 terraform/*.log
 terraform/tf_init_output.txt
 terraform/terraform.tfvars

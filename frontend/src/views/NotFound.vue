@@ -1,41 +1,8 @@
 <template>
-  <div class="not-found">
-    <h1>404</h1>
-    <p>Page not found</p>
-    <router-link to="/" class="btn">Go Home</router-link>
+  <div class="py-20 text-center">
+    <div class="text-8xl mb-6">&#128533;</div>
+    <h1 class="text-5xl font-extrabold text-gray-900 mb-4">404</h1>
+    <p class="text-xl text-gray-500 mb-8">Oops! The page you're looking for doesn't exist.</p>
+    <router-link to="/" class="btn-brand text-lg px-8 py-4">Go Home</router-link>
   </div>
 </template>
-
-<style scoped>
-.not-found {
-  text-align: center;
-  padding: 4rem 2rem;
-}
-
-h1 {
-  font-size: 6rem;
-  color: #2c3e50;
-  margin-bottom: 1rem;
-}
-
-p {
-  font-size: 1.5rem;
-  color: #7f8c8d;
-  margin-bottom: 2rem;
-}
-
-.btn {
-  padding: 1rem 2rem;
-  background: #3498db;
-  color: white;
-  text-decoration: none;
-  border-radius: 4px;
-  display: inline-block;
-  transition: background 0.2s;
-}
-
-.btn:hover {
-  background: #2980b9;
-  text-decoration: none;
-}
-</style>

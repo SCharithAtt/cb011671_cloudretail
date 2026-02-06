@@ -1,63 +1,51 @@
 <template>
-  <div class="login">
-    <div class="login-card">
-      <h2>Login</h2>
-      
-      <div class="tab-buttons">
-        <button 
-          :class="{ active: loginType === 'user' }"
+  <div class="flex items-center justify-center min-h-[60vh]">
+    <div class="card p-8 w-full max-w-md">
+      <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">Login</h2>
+
+      <div class="flex gap-2 mb-6">
+        <button
+          :class="[
+            'flex-1 py-3 rounded-lg font-medium transition-all duration-200',
+            loginType === 'user' ? 'bg-brand-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          ]"
           @click="loginType = 'user'"
-        >
-          Customer
-        </button>
-        <button 
-          :class="{ active: loginType === 'seller' }"
+        >Customer</button>
+        <button
+          :class="[
+            'flex-1 py-3 rounded-lg font-medium transition-all duration-200',
+            loginType === 'seller' ? 'bg-brand-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          ]"
           @click="loginType = 'seller'"
-        >
-          Seller
-        </button>
+        >Seller</button>
       </div>
 
-      <form v-if="loginType === 'seller'" @submit.prevent="handleSellerLogin">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input 
-            type="email" 
-            id="email" 
-            v-model="email" 
-            required 
-            placeholder="Enter your email"
-          />
+      <form v-if="loginType === 'seller'" @submit.prevent="handleSellerLogin" class="space-y-4">
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" id="email" v-model="email" required placeholder="Enter your email" class="input-field" />
         </div>
-
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="password" 
-            required 
-            placeholder="Enter your password"
-          />
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" id="password" v-model="password" required placeholder="Enter your password" class="input-field" />
         </div>
-
-        <div v-if="error" class="error">{{ error }}</div>
-
-        <button type="submit" class="btn btn-primary" :disabled="loading">
+        <div v-if="error" class="bg-red-50 text-red-600 p-3 rounded-lg text-center text-sm">{{ error }}</div>
+        <button type="submit" class="btn-brand w-full" :disabled="loading" :class="{ 'opacity-60 cursor-not-allowed': loading }">
           {{ loading ? 'Logging in...' : 'Login as Seller' }}
         </button>
       </form>
 
-      <div v-else class="oauth-login">
-        <p>Customer login uses AWS Cognito OAuth2</p>
-        <button @click="handleUserLogin" class="btn btn-primary">
-          Login with Cognito
-        </button>
+      <div v-else class="text-center py-8">
+        <div class="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span class="text-brand-600 text-3xl">&#128274;</span>
+        </div>
+        <p class="text-gray-500 mb-4">Customer login uses AWS Cognito OAuth2</p>
+        <button @click="handleUserLogin" class="btn-brand w-full">Login with Cognito</button>
       </div>
 
-      <p class="switch-text">
-        Don't have an account? 
-        <router-link to="/register">Register here</router-link>
+      <p class="text-center mt-6 text-gray-500 text-sm">
+        Don't have an account?
+        <router-link to="/register" class="text-brand-600 font-medium hover:text-brand-700">Register here</router-link>
       </p>
     </div>
   </div>
@@ -81,28 +69,14 @@ const error = ref('')
 const handleUserLogin = async () => {
   loading.value = true
   error.value = ''
-  
-  await authStore.login({
-    service: 'user',
-    email: email.value,
-    password: password.value
-  })
-  
-  // UserService will redirect to Cognito
+  await authStore.login({ service: 'user', email: email.value, password: password.value })
 }
 
 const handleSellerLogin = async () => {
   loading.value = true
   error.value = ''
-
-  const result = await authStore.login({
-    service: 'seller',
-    email: email.value,
-    password: password.value
-  })
-
+  const result = await authStore.login({ service: 'seller', email: email.value, password: password.value })
   loading.value = false
-
   if (result.success) {
     const redirect = route.query.redirect as string
     router.push(redirect || '/seller')
@@ -111,127 +85,3 @@ const handleSellerLogin = async () => {
   }
 }
 </script>
-
-<style scoped>
-.login {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 60vh;
-}
-
-.login-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 400px;
-}
-
-h2 {
-  text-align: center;
-  margin-bottom: 1.5rem;
-  color: #2c3e50;
-}
-
-.tab-buttons {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.tab-buttons button {
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.tab-buttons button.active {
-  background-color: #3498db;
-  color: white;
-  border-color: #3498db;
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #2c3e50;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #3498db;
-}
-
-.oauth-login {
-  text-align: center;
-  padding: 2rem 0;
-}
-
-.oauth-login p {
-  margin-bottom: 1rem;
-  color: #7f8c8d;
-}
-
-.error {
-  background-color: #fee;
-  color: #c33;
-  padding: 0.75rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.btn {
-  width: 100%;
-  padding: 0.75rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background-color: #3498db;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: #2980b9;
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.switch-text {
-  text-align: center;
-  margin-top: 1.5rem;
-  color: #7f8c8d;
-}
-
-.switch-text a {
-  color: #3498db;
-  font-weight: 500;
-}
-</style>

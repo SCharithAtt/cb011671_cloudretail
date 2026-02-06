@@ -1,0 +1,148 @@
+version: "3.8"
+
+services:
+  # ── PostgreSQL (for order_service) ──
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloudretail-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cloudretail
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── DynamoDB Local (for product_service) ──
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: cloudretail-dynamodb
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+
+  # ── User Service ──
+  user-service:
+    build:
+      context: ./backend/services/user_service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_eJvqfLh2p}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-2tkqjdk1i7r7uefcsargsrb3tq}
+      COGNITO_REGION: ${COGNITO_REGION:-us-east-1}
+      COGNITO_CLIENT_SECRET: ${COGNITO_CLIENT_SECRET:-}
+      COGNITO_REDIRECT_URL: http://localhost:8080/callback
+      COGNITO_LOGOUT_URL: http://localhost:8080
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Seller Service ──
+  seller-service:
+    build:
+      context: ./backend/services/seller_service
+      dockerfile: Dockerfile
+    container_name: seller-service
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: "8081"
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_eJvqfLh2p}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-2tkqjdk1i7r7uefcsargsrb3tq}
+      COGNITO_REGION: ${COGNITO_REGION:-us-east-1}
+      PRODUCT_GRAPHQL_URL: http://product-service:8082/graphql
+      ORDER_REST_URL: http://order-service:8083
+    depends_on:
+      product-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Product Service ──
+  product-service:
+    build:
+      context: ./backend/services/product_service
+      dockerfile: Dockerfile
+    container_name: product-service
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: "8082"
+      AWS_REGION: us-east-1
+      COGNITO_REGION: us-east-1
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_eJvqfLh2p}
+      PRODUCTS_TABLE: Products
+      REVIEWS_TABLE: Reviews
+      EVENT_BUS_NAME: default
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-local}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-local}
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+    depends_on:
+      dynamodb-local:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Order Service ──
+  order-service:
+    build:
+      context: ./backend/services/order_service
+      dockerfile: Dockerfile
+    container_name: order-service
+    ports:
+      - "8083:8083"
+    environment:
+      PORT: "8083"
+      AWS_REGION: us-east-1
+      COGNITO_REGION: us-east-1
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-us-east-1_eJvqfLh2p}
+      RDS_DSN: "host=postgres user=postgres password=postgres dbname=cloudretail port=5432 sslmode=disable"
+      EVENTBRIDGE_BUS_ARN: "arn:aws:events:us-east-1:000000000000:event-bus/default"
+      PRODUCT_GRAPHQL_URL: http://product-service:8082/graphql
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-local}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Frontend ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloudretail-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - user-service
+      - seller-service
+      - product-service
+      - order-service
+
+volumes:
+  pgdata:

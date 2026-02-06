@@ -1,54 +1,39 @@
 <template>
-  <div class="callback">
-    <div class="loading">
-      <h2>Processing login...</h2>
-      <p v-if="error" class="error">{{ error }}</p>
+  <div class="flex items-center justify-center min-h-[60vh]">
+    <div class="card p-10 text-center max-w-sm">
+      <div class="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+        <span class="text-brand-600 text-2xl">&#8987;</span>
+      </div>
+      <h2 class="text-xl font-semibold text-gray-900 mb-2">Authenticating...</h2>
+      <p class="text-gray-500">Please wait while we complete your login.</p>
+      <div v-if="error" class="mt-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm">{{ error }}</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter()
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const error = ref('')
 
-onMounted(() => {
-  // Extract tokens from URL query parameters
-  const idToken = route.query.id_token as string
-  const accessToken = route.query.access_token as string
-  const refreshToken = route.query.refresh_token as string
-
-  if (idToken && accessToken) {
-    authStore.handleOAuthCallback(idToken, accessToken, refreshToken)
-    router.push('/')
+onMounted(async () => {
+  const code = route.query.code as string
+  if (code) {
+    try {
+      await authStore.handleOAuthCallback(code)
+      router.push('/')
+    } catch (err) {
+      error.value = 'Authentication failed. Please try again.'
+      setTimeout(() => router.push('/login'), 3000)
+    }
   } else {
-    error.value = 'Invalid callback parameters'
-    setTimeout(() => {
-      router.push('/login')
-    }, 3000)
+    error.value = 'No authorization code received.'
+    setTimeout(() => router.push('/login'), 3000)
   }
 })
 </script>
-
-<style scoped>
-.callback {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 60vh;
-}
-
-.loading {
-  text-align: center;
-}
-
-.error {
-  color: #c33;
-  margin-top: 1rem;
-}
-</style>

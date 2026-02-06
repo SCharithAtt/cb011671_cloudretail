@@ -1,37 +1,21 @@
 <template>
-  <div class="payment">
-    <h1>Payment Simulation</h1>
-    
-    <div v-if="loading" class="loading">Loading payment page...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    
-    <div v-else class="payment-container">
-      <div class="payment-info">
-        <h2>Order ID: {{ orderId }}</h2>
-        <p class="info">
-          This is a simulated payment page. Check the box below to simulate a successful payment.
-        </p>
+  <div class="py-6 max-w-lg mx-auto">
+    <div class="card p-8 text-center">
+      <div class="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <span class="text-brand-600 text-4xl">&#128179;</span>
       </div>
+      <h1 class="text-2xl font-bold text-gray-900 mb-2">Payment</h1>
+      <p class="text-gray-500 mb-6">Order #{{ orderId }}</p>
 
-      <div class="payment-form">
-        <div class="checkbox-group">
-          <input 
-            type="checkbox" 
-            id="paymentSuccess" 
-            v-model="paymentSuccess"
-          />
-          <label for="paymentSuccess">
-            Simulate Successful Payment
-          </label>
-        </div>
+      <div v-if="loading" class="text-gray-500">Processing...</div>
+      <div v-else-if="error" class="bg-red-50 text-red-600 p-3 rounded-lg mb-4">{{ error }}</div>
 
-        <button 
-          @click="completePayment"
-          class="btn btn-primary"
-          :disabled="submitting"
-        >
-          {{ submitting ? 'Processing...' : 'Complete Payment' }}
-        </button>
+      <div v-if="paymentUrl" class="space-y-4">
+        <p class="text-gray-600">Click below to simulate payment:</p>
+        <a :href="paymentUrl" class="btn-brand w-full block text-center">Simulate Payment</a>
+      </div>
+      <div v-else-if="!loading" class="space-y-4">
+        <button @click="initiatePayment" class="btn-brand w-full">Initiate Payment</button>
       </div>
     </div>
   </div>
@@ -39,144 +23,29 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { orderServiceApi } from '@/services/api'
 
-const router = useRouter()
 const route = useRoute()
-
 const orderId = route.params.orderId as string
 const loading = ref(true)
 const error = ref('')
-const submitting = ref(false)
-const paymentSuccess = ref(false)
+const paymentUrl = ref('')
 
-onMounted(async () => {
-  try {
-    // Call simulatePayment endpoint to get payment page
-    await orderServiceApi.get(`/simulatePayment/${orderId}`)
-    loading.value = false
-  } catch (err: any) {
-    console.error('Failed to load payment page:', err)
-    error.value = err.response?.data?.error || 'Failed to load payment page'
-    loading.value = false
-  }
-})
-
-const completePayment = async () => {
-  submitting.value = true
+const initiatePayment = async () => {
+  loading.value = true
   error.value = ''
-
   try {
-    // Mark payment as done
-    await orderServiceApi.post(`/markPaymentDone/${orderId}`, {
-      paid: paymentSuccess.value
-    })
-
-    // Redirect to order confirmed page
-    router.push(`/order-confirmed/${orderId}`)
+    const response = await orderServiceApi.get(`/simulatePayment/${orderId}`)
+    paymentUrl.value = response.data.payment_url || ''
+    loading.value = false
   } catch (err: any) {
-    console.error('Payment processing failed:', err)
-    error.value = err.response?.data?.error || 'Payment processing failed'
-    submitting.value = false
+    error.value = err.response?.data?.error || 'Failed to initiate payment'
+    loading.value = false
   }
 }
+
+onMounted(() => {
+  initiatePayment()
+})
 </script>
-
-<style scoped>
-.payment {
-  padding: 2rem 0;
-}
-
-h1 {
-  margin-bottom: 2rem;
-  color: #2c3e50;
-  text-align: center;
-}
-
-.loading,
-.error {
-  text-align: center;
-  padding: 2rem;
-  font-size: 1.2rem;
-}
-
-.error {
-  color: #c33;
-  background: #fee;
-  border-radius: 8px;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.payment-container {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.payment-info,
-.payment-form {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
-}
-
-h2 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
-}
-
-.info {
-  color: #7f8c8d;
-  line-height: 1.6;
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  background: #f8f9fa;
-  border-radius: 4px;
-  margin-bottom: 1.5rem;
-}
-
-.checkbox-group input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-}
-
-.checkbox-group label {
-  font-size: 1.1rem;
-  cursor: pointer;
-  color: #2c3e50;
-}
-
-.btn {
-  width: 100%;
-  padding: 1rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2980b9;
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-</style>

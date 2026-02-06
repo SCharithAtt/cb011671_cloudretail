@@ -1,50 +1,34 @@
 <template>
-  <div class="seller-products">
-    <div class="header">
-      <h1>My Products</h1>
-      <router-link to="/seller/products/add" class="btn btn-primary">
-        Add Product
-      </router-link>
-    </div>
-    
-    <div v-if="loading" class="loading">Loading products...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    
-    <div v-else-if="products.length === 0" class="no-products">
-      <p>You haven't added any products yet</p>
-      <router-link to="/seller/products/add" class="btn btn-primary">
-        Add Your First Product
-      </router-link>
+  <div class="py-6">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-3xl font-bold text-gray-900">My Products</h1>
+      <router-link to="/seller/products/add" class="btn-brand">+ Add Product</router-link>
     </div>
 
-    <div v-else class="products-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Stock</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="product in products" :key="product.product_id">
-            <td>{{ product.name }}</td>
-            <td>${{ product.price.toFixed(2) }}</td>
-            <td :class="{ 'low-stock': product.stock < 10 }">
-              {{ product.stock }}
-            </td>
-            <td class="actions">
-              <router-link 
-                :to="`/seller/products/edit/${product.product_id}`"
-                class="btn-edit"
-              >
-                Edit
-              </router-link>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-if="loading" class="text-center py-12 text-gray-500 text-lg">Loading products...</div>
+    <div v-else-if="error" class="text-center py-12 text-red-500">{{ error }}</div>
+    <div v-else-if="products.length === 0" class="card p-12 text-center">
+      <p class="text-gray-500 text-lg mb-4">You haven't added any products yet.</p>
+      <router-link to="/seller/products/add" class="btn-brand">Add Your First Product</router-link>
+    </div>
+
+    <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-for="product in products" :key="product.product_id" class="card overflow-hidden">
+        <div class="h-2 bg-gradient-to-r from-brand-400 to-brand-600"></div>
+        <div class="p-5">
+          <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ product.name }}</h3>
+          <p class="text-gray-500 text-sm mb-4 line-clamp-2">{{ product.description }}</p>
+          <div class="flex justify-between items-center mb-4">
+            <span class="text-xl font-bold text-brand-600">${{ product.price.toFixed(2) }}</span>
+            <span :class="['badge', product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700']">
+              Stock: {{ product.stock }}
+            </span>
+          </div>
+          <router-link :to="`/seller/products/edit/${product.product_id}`" class="btn-brand-outline w-full text-center block text-sm py-2">
+            Edit Product
+          </router-link>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -53,33 +37,15 @@
 import { ref, onMounted } from 'vue'
 import { useQuery } from '@vue/apollo-composable'
 import { gql } from '@apollo/client/core'
-import { useAuthStore } from '@/stores/auth'
 
-const authStore = useAuthStore()
-
-interface Product {
-  product_id: string
-  name: string
-  price: number
-  stock: number
-  seller_id: string
-}
+interface Product { product_id: string; name: string; description: string; price: number; stock: number; seller_id: string }
 
 const products = ref<Product[]>([])
 const loading = ref(true)
 const error = ref('')
 
 const GET_ALL_PRODUCTS = gql`
-  query GetAllProducts {
-    getAllProducts {
-      product_id
-      name
-      description
-      price
-      stock
-      seller_id
-    }
-  }
+  query GetAllProducts { getAllProducts { product_id name description price stock seller_id } }
 `
 
 const { result, loading: queryLoading, error: queryError } = useQuery(GET_ALL_PRODUCTS)
@@ -87,128 +53,11 @@ const { result, loading: queryLoading, error: queryError } = useQuery(GET_ALL_PR
 onMounted(() => {
   const checkData = setInterval(() => {
     if (!queryLoading.value) {
-      if (queryError.value) {
-        error.value = 'Failed to load products'
-      } else if (result.value) {
-        // Filter products by current seller
-        const allProducts = result.value.getAllProducts || []
-        products.value = allProducts.filter((p: Product) => p.seller_id === authStore.userId)
-      }
+      if (queryError.value) error.value = 'Failed to load products'
+      else if (result.value) products.value = result.value.getAllProducts || []
       loading.value = false
       clearInterval(checkData)
     }
   }, 100)
 })
 </script>
-
-<style scoped>
-.seller-products {
-  padding: 2rem 0;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-h1 {
-  color: #2c3e50;
-}
-
-.loading,
-.error {
-  text-align: center;
-  padding: 2rem;
-  font-size: 1.2rem;
-}
-
-.error {
-  color: #c33;
-  background: #fee;
-  border-radius: 8px;
-}
-
-.no-products {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: white;
-  border-radius: 8px;
-}
-
-.no-products p {
-  font-size: 1.2rem;
-  color: #7f8c8d;
-  margin-bottom: 1.5rem;
-}
-
-.products-table {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: #f8f9fa;
-}
-
-th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  color: #2c3e50;
-  border-bottom: 2px solid #eee;
-}
-
-td {
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
-}
-
-.low-stock {
-  color: #e74c3c;
-  font-weight: 600;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-edit {
-  padding: 0.5rem 1rem;
-  background: #3498db;
-  color: white;
-  text-decoration: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  transition: background 0.2s;
-}
-
-.btn-edit:hover {
-  background: #2980b9;
-  text-decoration: none;
-}
-
-.btn-primary {
-  padding: 0.75rem 1.5rem;
-  background: #2ecc71;
-  color: white;
-  text-decoration: none;
-  border-radius: 4px;
-  font-weight: 600;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover {
-  background: #27ae60;
-  text-decoration: none;
-}
-</style>

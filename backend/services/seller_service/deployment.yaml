@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: seller-config
+  namespace: default
+type: Opaque
+stringData:
+  COGNITO_USER_POOL_ID: "us-east-1_eJvqfLh2p"
+  COGNITO_CLIENT_ID: "2tkqjdk1i7r7uefcsargsrb3tq"
+  COGNITO_REGION: "us-east-1"
+  PRODUCT_GRAPHQL_URL: "http://product-service:8082/graphql"
+  ORDER_REST_URL: "http://order-service:8083"
+  PORT: "8081"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seller-service
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: seller-service
+  template:
+    metadata:
+      labels:
+        app: seller-service
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: seller-service
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/seller-service:latest
+        ports:
+        - containerPort: 8081
+        envFrom:
+        - secretRef:
+            name: seller-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seller-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: seller-service
+  ports:
+  - protocol: TCP
+    port: 8081
+    targetPort: 8081

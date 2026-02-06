@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: default
+  labels:
+    app: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: 111546515511.dkr.ecr.us-east-1.amazonaws.com/user_service:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: COGNITO_USER_POOL_ID
+              value: "us-east-1_eJvqfLh2p"
+            - name: COGNITO_CLIENT_ID
+              value: "2tkqjdk1i7r7uefcsargsrb3tq"
+            - name: COGNITO_REGION
+              value: "us-east-1"
+            - name: COGNITO_REDIRECT_URL
+              value: "http://localhost:8080/callback"
+            - name: COGNITO_LOGOUT_URL
+              value: "http://localhost:8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: user-service
